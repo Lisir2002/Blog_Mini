@@ -7,6 +7,7 @@ namespace PenBlog\Notification;
 use PenBlog\Auth\UserRepository;
 use PenBlog\Kernel\Kernel;
 use PenBlog\Notification\Events\CommentCreated;
+use PenBlog\Notification\Events\LevelPromoted;
 use PenBlog\Notification\Events\PostPublished;
 use Psr\Log\LoggerInterface;
 
@@ -95,6 +96,24 @@ final class NotificationService
                     )));
                 }
             }
+        });
+
+        // 经验晋升(09 §2)→ 本人 system 类通知
+        $kernel->events->listen(LevelPromoted::class, static function (LevelPromoted $e) use ($pipeline, $safe): void {
+            $safe(static fn () => $pipeline()->process(new NotifyRequest(
+                eventId: NotifyRequest::uuid(),
+                category: 'system',
+                recipient: $e->userId,
+                templateKey: 'user.level_promoted',
+                payload: [
+                    'username' => $e->username,
+                    'old_level' => 'L' . $e->oldLevel,
+                    'new_level' => 'L' . $e->newLevel,
+                    'xp' => $e->xp,
+                ],
+                dedupKey: 'level.promoted:' . $e->userId . ':' . $e->newLevel,
+                link: '/admin/dashboard',
+            )));
         });
     }
 }

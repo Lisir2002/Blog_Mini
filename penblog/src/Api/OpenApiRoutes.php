@@ -88,6 +88,10 @@ final class OpenApiRoutes
         'GET /api/v1/menus/{location}' => ['summary' => '单个菜单(条目 + resourceVersion)', 'permission' => 'system:manage'],
         'PUT /api/v1/menus/{location}' => ['summary' => '保存菜单(校验后整表覆盖)', 'permission' => 'system:manage'],
         'DELETE /api/v1/menus/{location}' => ['summary' => '删除菜单(前台回退默认导航)', 'permission' => 'system:manage'],
+        // 经验系统(09 §2)
+        'GET /api/v1/xp/settings' => ['summary' => '经验系统设置(开关/规则/阈值)', 'permission' => 'system:manage'],
+        'PUT /api/v1/xp/settings' => ['summary' => '保存经验系统设置(校验后整组落盘)', 'permission' => 'system:manage'],
+        'POST /api/v1/users/{name}/xp:grant' => ['summary' => '手工发放经验(eventId 幂等)', 'permission' => 'system:manage'],
     ];
 
     /** 集合 GET 端点共用的列表查询参数(06 §4) */

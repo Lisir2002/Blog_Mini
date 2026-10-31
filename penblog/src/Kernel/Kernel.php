@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.7.0-m9';
+    public const VERSION = '0.8.0-m10';
 
     public readonly Container $container;
     public readonly Router $router;
@@ -69,6 +69,7 @@ final class Kernel
             $m->register('0003-content-schema', new \PenBlog\Database\Migrations\ContentSchema());
             $m->register('0004-notification-schema', new \PenBlog\Database\Migrations\NotificationSchema());
             $m->register('0005-webhook-schema', new \PenBlog\Database\Migrations\WebhookSchema());
+            $m->register('0006-xp-schema', new \PenBlog\Database\Migrations\XpSchema());
             return $m;
         });
 
@@ -84,6 +85,12 @@ final class Kernel
             $c->get(\PenBlog\Auth\PasswordHasher::class),
         ));
         $container->singleton(\PenBlog\Auth\PermissionResolver::class, static fn (Container $c): \PenBlog\Auth\PermissionResolver => new \PenBlog\Auth\PermissionResolver($c->get(ExtensionRegistry::class)));
+        $container->singleton(\PenBlog\Auth\XpService::class, static fn (Container $c): \PenBlog\Auth\XpService => new \PenBlog\Auth\XpService(
+            $c->get(SqlDriver::class),
+            $c->get(OptionsStore::class),
+            $c->get(\PenBlog\Auth\UserRepository::class),
+            $c->get(EventBus::class),
+        ));
 
         $this->extensions()->registerType(\PenBlog\Auth\User::KIND, \PenBlog\Auth\User::class);
         $this->extensions()->registerType(\PenBlog\Auth\AccessLevel::KIND, \PenBlog\Auth\AccessLevel::class);
@@ -153,6 +160,8 @@ final class Kernel
         $this->registerCoreRoutes();
         \PenBlog\Theme\ThemeRoutes::register($this);
         \PenBlog\Notification\NotificationService::register($this);
+        \PenBlog\Auth\XpService::register($this);
+        \PenBlog\Auth\XpAdminRoutes::register($this);
         \PenBlog\Webhook\WebhookDispatcher::register($this);
         \PenBlog\Api\OpenApiRoutes::register($this);
         \PenBlog\Plugin\PluginRoutes::register($this);

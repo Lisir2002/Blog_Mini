@@ -28,6 +28,11 @@ final class NotificationTemplates
             'body' => '{{author_name}} 发布了《{{title}}》',
             'link' => '/posts/{{slug}}',
         ],
+        'user.level_promoted' => [
+            'title' => '等级晋升 · {{new_level}}',
+            'body' => '{{username}} 累计经验 {{xp}},等级由 {{old_level}} 晋升为 {{new_level}}',
+            'link' => '/admin/dashboard',
+        ],
         'system.test' => [
             'title' => '测试通知',
             'body' => '这是一条来自 PenBlog 的测试通知,用于验证通知管线。',

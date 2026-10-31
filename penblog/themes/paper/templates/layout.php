@@ -29,6 +29,7 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
     <a href="/admin/plugins" <?= ($page ?? '') === 'plugins' ? 'aria-current="page"' : '' ?>>插件</a>
     <a href="/admin/themes" <?= ($page ?? '') === 'themes' ? 'aria-current="page"' : '' ?>>主题</a>
     <a href="/admin/menus" <?= ($page ?? '') === 'menus' ? 'aria-current="page"' : '' ?>>菜单</a>
+    <a href="/admin/xp" <?= ($page ?? '') === 'xp' ? 'aria-current="page"' : '' ?>>经验</a>
     <?php foreach (($pluginMenu ?? []) as $pm): ?>
       <a href="<?= View::e($pm['item']->url) ?>"><?= View::e($pm['item']->label) ?></a>
     <?php endforeach; ?>
