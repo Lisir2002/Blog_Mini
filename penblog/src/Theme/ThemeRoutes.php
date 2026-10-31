@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PenBlog\Theme;
 
 use Nyholm\Psr7\Response;
+use PenBlog\Api\ApiException;
 use PenBlog\Api\Body;
 use PenBlog\Auth\Gate;
 use PenBlog\Auth\PasswordHasher;
@@ -247,7 +248,7 @@ final class ThemeRoutes
         });
 
         foreach (['publish', 'delete'] as $action) {
-            $router->post("/admin/posts/{slug}/{$action}", static function (ServerRequestInterface $req) use ($kernel, $posts): ResponseInterface {
+            $router->post("/admin/posts/{slug}/{$action}", static function (ServerRequestInterface $req) use ($kernel, $posts, $action): ResponseInterface {
                 $slug = (string) (Body::routeParams($req)['slug'] ?? '');
                 $gate = AuthMiddleware::gate($req);
                 if (!$gate->isAuthenticated()) {
@@ -268,6 +269,218 @@ final class ThemeRoutes
                 return new Response(302, ['Location' => '/admin/dashboard']);
             });
         }
+
+        // ---- Markdown 编辑器(11 §3/§4)----
+        // POST 均走 CsrfMiddleware(/admin/ 前缀 + _csrf 表单字段),此处不重复校验。
+        $canWrite = static function (Gate $gate): bool {
+            return $gate->isAuthenticated() && ($gate->allows('post:write') || $gate->allows('post:manage'));
+        };
+
+        $router->get('/admin/posts/new', static function (ServerRequestInterface $req) use ($kernel, $canWrite): ResponseInterface {
+            $gate = AuthMiddleware::gate($req);
+            if (!$gate->isAuthenticated()) {
+                return new Response(302, ['Location' => '/admin/login']);
+            }
+            if (!$canWrite($gate)) {
+                return new Response(302, ['Location' => '/admin/dashboard?error=forbidden']);
+            }
+            return self::editorPage($kernel, $req, [
+                'post' => null,
+                'values' => self::editorDefaults(),
+                'resourceVersion' => null,
+                'action' => '/admin/posts/new',
+                'draftKey' => 'new',
+                'heading' => '写文章',
+                'error' => null,
+                'conflict' => false,
+                'saved' => isset($req->getQueryParams()['saved']),
+            ]);
+        });
+
+        $router->post('/admin/posts/new', static function (ServerRequestInterface $req) use ($kernel, $posts, $canWrite): ResponseInterface {
+            $gate = AuthMiddleware::gate($req);
+            if (!$gate->isAuthenticated()) {
+                return new Response(302, ['Location' => '/admin/login']);
+            }
+            if (!$canWrite($gate)) {
+                return new Response(302, ['Location' => '/admin/dashboard?error=forbidden']);
+            }
+            $values = self::editorInput(Body::of($req));
+            $error = self::editorValidate($values);
+            if ($error === null) {
+                try {
+                    $post = $posts()->save(null, self::editorSave($values), $gate);
+                    return new Response(302, ['Location' => '/admin/posts/' . rawurlencode($post->slug()) . '/edit?saved=1']);
+                } catch (ApiException $e) {
+                    $error = $e->getMessage();
+                }
+            }
+            return self::editorPage($kernel, $req, [
+                'post' => null, 'values' => $values, 'resourceVersion' => null,
+                'action' => '/admin/posts/new', 'draftKey' => 'new',
+                'heading' => '写文章', 'error' => $error, 'conflict' => false, 'saved' => false,
+            ], 400);
+        });
+
+        $router->get('/admin/posts/{slug}/edit', static function (ServerRequestInterface $req) use ($kernel, $posts, $canWrite): ResponseInterface {
+            $slug = (string) (Body::routeParams($req)['slug'] ?? '');
+            $gate = AuthMiddleware::gate($req);
+            if (!$gate->isAuthenticated()) {
+                return new Response(302, ['Location' => '/admin/login']);
+            }
+            if (!$canWrite($gate)) {
+                return new Response(302, ['Location' => '/admin/dashboard?error=forbidden']);
+            }
+            try {
+                $post = $posts()->get($slug, $gate);
+            } catch (ApiException) {
+                return self::notFound($kernel, $req);
+            }
+            if (!$gate->canWritePost($post->author())) {
+                return new Response(302, ['Location' => '/admin/dashboard?error=forbidden']);
+            }
+            return self::editorPage($kernel, $req, [
+                'post' => $post,
+                'values' => self::editorFromPost($post),
+                'resourceVersion' => $post->metadata->resourceVersion,
+                'action' => '/admin/posts/' . rawurlencode($post->slug()) . '/edit',
+                'draftKey' => $post->slug(),
+                'heading' => '编辑文章',
+                'error' => null,
+                'conflict' => false,
+                'saved' => isset($req->getQueryParams()['saved']),
+            ]);
+        });
+
+        $router->post('/admin/posts/{slug}/edit', static function (ServerRequestInterface $req) use ($kernel, $posts, $canWrite): ResponseInterface {
+            $slug = (string) (Body::routeParams($req)['slug'] ?? '');
+            $gate = AuthMiddleware::gate($req);
+            if (!$gate->isAuthenticated()) {
+                return new Response(302, ['Location' => '/admin/login']);
+            }
+            if (!$canWrite($gate)) {
+                return new Response(302, ['Location' => '/admin/dashboard?error=forbidden']);
+            }
+            $author = $posts()->authorOf($slug);
+            if ($author === null) {
+                return new Response(302, ['Location' => '/admin/dashboard']);
+            }
+            if (!$gate->canWritePost($author)) {
+                return new Response(302, ['Location' => '/admin/dashboard?error=forbidden']);
+            }
+            $body = Body::of($req);
+            $values = self::editorInput($body);
+            $save = self::editorSave($values);
+            $rv = (string) ($body['resourceVersion'] ?? '');
+            if ($rv !== '' && ctype_digit($rv)) {
+                $save['metadata']['resourceVersion'] = (int) $rv;
+            }
+            $error = self::editorValidate($values);
+            $conflict = false;
+            if ($error === null) {
+                try {
+                    $post = $posts()->save($slug, $save, $gate);
+                    return new Response(302, ['Location' => '/admin/posts/' . rawurlencode($post->slug()) . '/edit?saved=1']);
+                } catch (ApiException $e) {
+                    $error = $e->getMessage();
+                    $conflict = $e->errorCode === 'resource_version_conflict';
+                }
+            }
+            // 冲突/校验失败:回显用户输入,绝不静默丢弃(11 §3.4)
+            return self::editorPage($kernel, $req, [
+                'post' => null, 'values' => $values,
+                'resourceVersion' => $rv !== '' && ctype_digit($rv) ? (int) $rv : null,
+                'action' => '/admin/posts/' . rawurlencode($slug) . '/edit',
+                'draftKey' => $slug, 'heading' => '编辑文章',
+                'error' => $error, 'conflict' => $conflict, 'saved' => false,
+            ], $conflict ? 409 : 400);
+        });
+
+        // 服务端权威预览(11 §3.3):防抖调用,返回已净化 HTML 片段。
+        $router->post('/admin/preview', static function (ServerRequestInterface $req) use ($canWrite): ResponseInterface {
+            $gate = AuthMiddleware::gate($req);
+            if (!$gate->isAuthenticated()) {
+                return new Response(401, ['Content-Type' => 'text/plain; charset=utf-8'], '需要登录');
+            }
+            if (!$canWrite($gate)) {
+                return new Response(403, ['Content-Type' => 'text/plain; charset=utf-8'], '无权限');
+            }
+            $md = (string) (Body::of($req)['bodyMd'] ?? '');
+            if (strlen($md) > Markdown::MAX_INPUT) {
+                $md = substr($md, 0, Markdown::MAX_INPUT);
+            }
+            return new Response(200, ['Content-Type' => 'text/html; charset=utf-8'], Markdown::toHtml($md));
+        });
+    }
+
+    /** @return array<string, string> */
+    private static function editorDefaults(): array
+    {
+        return ['title' => '', 'slug' => '', 'bodyMd' => '', 'excerpt' => '', 'status' => 'draft', 'categories' => '', 'tags' => ''];
+    }
+
+    /** @return array<string, string> 表单回显值(categories/tags 保持逗号串) */
+    private static function editorInput(array $body): array
+    {
+        return [
+            'title' => trim((string) ($body['title'] ?? '')),
+            'slug' => trim((string) ($body['slug'] ?? '')),
+            'bodyMd' => (string) ($body['bodyMd'] ?? ''),
+            'excerpt' => trim((string) ($body['excerpt'] ?? '')),
+            'status' => (string) ($body['status'] ?? 'draft'),
+            'categories' => trim((string) ($body['categories'] ?? '')),
+            'tags' => trim((string) ($body['tags'] ?? '')),
+        ];
+    }
+
+    /** @param array<string, string> $values @return array<string, mixed> 仓储保存输入 */
+    private static function editorSave(array $values): array
+    {
+        $split = static fn (string $v): array => array_values(array_filter(
+            array_map('trim', explode(',', $v)),
+            static fn (string $s): bool => $s !== '',
+        ));
+        return [
+            'title' => $values['title'],
+            'slug' => $values['slug'],
+            'bodyMd' => $values['bodyMd'],
+            'excerpt' => $values['excerpt'] === '' ? null : $values['excerpt'],
+            'status' => $values['status'],
+            'categories' => $split($values['categories']),
+            'tags' => $split($values['tags']),
+        ];
+    }
+
+    /** @return array<string, string> */
+    private static function editorFromPost(Post $post): array
+    {
+        return [
+            'title' => $post->title(),
+            'slug' => $post->slug(),
+            'bodyMd' => $post->bodyMd(),
+            'excerpt' => (string) ($post->excerpt() ?? ''),
+            'status' => $post->status(),
+            'categories' => implode(', ', $post->categories()),
+            'tags' => implode(', ', $post->tags()),
+        ];
+    }
+
+    /** @param array<string, mixed> $values @return ?string */
+    private static function editorValidate(array $values): ?string
+    {
+        if (strlen((string) $values['bodyMd']) > Markdown::MAX_INPUT) {
+            return '正文超过 200KB 上限,请拆分内容';
+        }
+        if ($values['status'] === 'published' && $values['title'] === '') {
+            return '发布前必须填写标题';
+        }
+        return null;
+    }
+
+    /** @param array<string, mixed> $data */
+    private static function editorPage(Kernel $kernel, ServerRequestInterface $req, array $data, int $status = 200): ResponseInterface
+    {
+        return self::page($kernel, $req, 'admin_editor', $data, 'dashboard', $data['heading'] . ' · 后台', 'admin', $status);
     }
 
     /** 主题 404 页(Kernel 在非 API 路由未匹配时调用)。 */

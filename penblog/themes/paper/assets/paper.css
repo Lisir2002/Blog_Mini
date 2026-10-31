@@ -385,6 +385,64 @@ details.field > .grid-2, details.field > .field { margin-block-start: var(--spac
 .summary dd { margin: 0; }
 .next-steps { margin: 0; padding-inline-start: var(--space-lg); display: grid; gap: var(--space-xs); color: var(--color-text-secondary); }
 
+/* ---------- Markdown 编辑器(11 §3) ---------- */
+.editor-page > .alert { margin-block-end: var(--space-md); }
+.alert-success { border-color: var(--color-success); color: var(--color-success); background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+.editor-grid {
+  display: grid; gap: var(--space-lg);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  align-items: start;
+}
+.editor-grid > * { min-width: 0; }
+@media (max-width: 900px) { .editor-grid { grid-template-columns: 1fr; } }
+.editor-main { display: grid; gap: 0; min-width: 0; }
+.editor-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs);
+  padding: var(--space-xs); background: var(--color-surface-muted);
+  border: 1px solid var(--color-border); border-block-end: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.tb-btn {
+  min-width: 36px; min-height: 36px; padding-inline: var(--space-xs);
+  font: inherit; font-size: .875rem; cursor: pointer;
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+}
+@media (hover: hover) { .tb-btn:hover { border-color: var(--color-accent); color: var(--color-accent); } }
+.tb-spacer { flex: 1 1 auto; }
+.md-textarea {
+  width: 100%; min-height: min(52vh, 480px); resize: vertical;
+  font-family: var(--font-mono); font-size: .9375rem; line-height: 1.6;
+  padding: var(--space-md); color: var(--color-text);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  overflow-wrap: anywhere;
+}
+.md-textarea:focus {
+  outline: none; border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.editor-preview {
+  margin-block-start: var(--space-md); padding: var(--space-md);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-surface); max-height: 60vh; overflow-y: auto;
+}
+.editor-side {
+  padding: var(--space-md); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+}
+.editor-side select {
+  height: 40px; font: inherit; color: var(--color-text); width: 100%;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm); padding-inline: var(--space-sm);
+}
+.editor-side select:focus {
+  outline: none; border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+#draft-status { min-height: 1.4em; margin-block: var(--space-xs) 0; }
+.draft-banner { margin-block-start: var(--space-md); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+
 /* ---------- 动效约束(§2.3)+ reduced-motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }

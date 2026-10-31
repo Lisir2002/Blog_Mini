@@ -8,11 +8,15 @@ $badge = static fn (string $s): string => match ($s) {
 };
 ?>
 <h2>内容 · 文章</h2>
-<p class="meta">共 <?= $total ?> 篇</p>
+<p class="meta" style="display:flex;align-items:center;gap:var(--space-sm);flex-wrap:wrap">
+  共 <?= $total ?> 篇
+  <a class="btn btn-sm" style="margin-inline-start:auto" href="/admin/posts/new">+ 写文章</a>
+</p>
 <?php if ($posts === []): ?>
   <div class="empty-state">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
-    <p>还没有文章。可通过 <code>POST /api/v1/posts</code> 创建第一篇,可视化编辑器在后续里程碑提供。</p>
+    <p>还没有文章。点击「写文章」用 Markdown 创建第一篇。</p>
+    <a class="btn" href="/admin/posts/new">写第一篇文章</a>
   </div>
 <?php else: ?>
 <div class="table-wrap">
@@ -38,6 +42,7 @@ $badge = static fn (string $s): string => match ($s) {
         <div class="menu" data-menu>
           <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="《<?= View::e($post->title()) ?>》的操作">⋯</button>
           <div class="menu-panel" role="menu">
+            <a role="menuitem" href="/admin/posts/<?= rawurlencode($post->slug()) ?>/edit">编辑</a>
             <?php if (!$post->isPublished()): ?>
             <form method="post" action="/admin/posts/<?= rawurlencode($post->slug()) ?>/publish" role="none">
               <input type="hidden" name="_csrf" value="<?= View::e($csrf) ?>">

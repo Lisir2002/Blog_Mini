@@ -22,6 +22,7 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
 <div class="admin-shell">
   <aside class="admin-sidebar" aria-label="后台导航">
     <a href="/admin/dashboard" <?= ($page ?? '') === 'dashboard' ? 'aria-current="page"' : '' ?>>内容</a>
+    <a href="/admin/posts/new">写文章</a>
     <a href="#" aria-disabled="true">设置(M3)</a>
     <a href="/" target="_blank" rel="noopener">查看站点</a>
   </aside>
