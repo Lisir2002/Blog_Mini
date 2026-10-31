@@ -9,7 +9,7 @@ namespace PenBlog\Kernel;
  */
 final class Router
 {
-    /** @var list<array{method:string, regex:string, params:list<string>, handler:callable, middleware:list<object>}> */
+    /** @var list<array{method:string, pattern:string, regex:string, params:list<string>, handler:callable, middleware:list<object>}> */
     private array $routes = [];
 
     public function add(string $method, string $pattern, callable $handler, array $middleware = []): void
@@ -25,6 +25,7 @@ final class Router
         );
         $this->routes[] = [
             'method' => strtoupper($method),
+            'pattern' => $pattern,
             'regex' => '#^' . $regex . '$#',
             'params' => $params,
             'handler' => \Closure::fromCallable($handler),
@@ -50,6 +51,15 @@ final class Router
     public function delete(string $pattern, callable $handler, array $middleware = []): void
     {
         $this->add('DELETE', $pattern, $handler, $middleware);
+    }
+
+    /** 注册表快照(06 §7 OpenAPI 导出用):不含 handler。 @return list<array{method:string, pattern:string}> */
+    public function routes(): array
+    {
+        return array_map(
+            static fn (array $r): array => ['method' => $r['method'], 'pattern' => $r['pattern']],
+            $this->routes,
+        );
     }
 
     public function match(string $method, string $path): ?RouteMatch

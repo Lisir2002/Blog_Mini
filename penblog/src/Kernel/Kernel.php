@@ -64,6 +64,7 @@ final class Kernel
             $m->register('0002-auth-schema', new \PenBlog\Database\Migrations\AuthSchema());
             $m->register('0003-content-schema', new \PenBlog\Database\Migrations\ContentSchema());
             $m->register('0004-notification-schema', new \PenBlog\Database\Migrations\NotificationSchema());
+            $m->register('0005-webhook-schema', new \PenBlog\Database\Migrations\WebhookSchema());
             return $m;
         });
 
@@ -109,6 +110,13 @@ final class Kernel
             ],
         ));
 
+        // ---- Webhook 出站(06 §8)----
+        $container->singleton(\PenBlog\Webhook\WebhookRepository::class, static fn (Container $c): \PenBlog\Webhook\WebhookRepository => new \PenBlog\Webhook\WebhookRepository($c->get(SqlDriver::class)));
+        $container->singleton(\PenBlog\Webhook\WebhookDispatcher::class, static fn (Container $c): \PenBlog\Webhook\WebhookDispatcher => new \PenBlog\Webhook\WebhookDispatcher(
+            $c->get(\PenBlog\Webhook\WebhookRepository::class),
+            $c->get(LoggerInterface::class),
+        ));
+
         $this->addMiddleware(new \PenBlog\Http\BodyParserMiddleware());
         $this->addMiddleware(new \PenBlog\Http\AuthMiddleware($this->container));
         $this->addMiddleware(new \PenBlog\Http\CsrfMiddleware());
@@ -116,9 +124,12 @@ final class Kernel
         \PenBlog\Api\AuthRoutes::register($this);
         \PenBlog\Api\ContentRoutes::register($this);
         \PenBlog\Api\NotificationRoutes::register($this);
+        \PenBlog\Api\WebhookRoutes::register($this);
         $this->registerCoreRoutes();
         \PenBlog\Theme\ThemeRoutes::register($this);
         \PenBlog\Notification\NotificationService::register($this);
+        \PenBlog\Webhook\WebhookDispatcher::register($this);
+        \PenBlog\Api\OpenApiRoutes::register($this);
     }
 
     /** @param array<string, mixed> $config */
