@@ -80,6 +80,7 @@ final class MysqlDriver extends AbstractDriver
             'json' => 'JSON',
             'timestamp' => 'DATETIME',
             'integer' => 'INT',
+            'bigint' => 'BIGINT UNSIGNED',
             'boolean' => 'TINYINT(1)',
             default => throw new \InvalidArgumentException("Unknown type: {$type}"),
         };

@@ -63,7 +63,7 @@ final class SqliteDriver extends AbstractDriver
         return match ($type) {
             'pk' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
             'string', 'text', 'json', 'timestamp' => 'TEXT',
-            'integer', 'boolean' => 'INTEGER',
+            'integer', 'bigint', 'boolean' => 'INTEGER',
             default => throw new \InvalidArgumentException("Unknown type: {$type}"),
         };
     }

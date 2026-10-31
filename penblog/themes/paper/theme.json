@@ -1,0 +1,14 @@
+{
+  "name": "paper",
+  "displayName": "Paper 编辑部",
+  "version": "0.2.0",
+  "author": "PenBlog",
+  "description": "内容优先的默认主题:令牌驱动、零 JS 阅读、全端流式自适应(08 规范首发实现)。",
+  "templates": ["layout", "home", "post", "author", "page", "404", "admin_login", "admin_dashboard"],
+  "darkMode": { "strategy": "media" },
+  "tokens": {
+    "color.accent": "#4F46E5",
+    "layout.containerMaxWidth": "1080px",
+    "layout.proseMeasure": "72ch"
+  }
+}

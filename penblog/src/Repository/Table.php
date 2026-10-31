@@ -44,6 +44,12 @@ final class Table
         $this->column($name, 'integer', $opts);
     }
 
+    /** 外键列用:MySQL 需与 pk(BIGINT UNSIGNED)同型,SQLite 即 INTEGER。 */
+    public function bigInteger(string $name, array $opts = []): void
+    {
+        $this->column($name, 'bigint', $opts);
+    }
+
     public function boolean(string $name, array $opts = []): void
     {
         $this->column($name, 'boolean', $opts);

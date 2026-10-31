@@ -3,16 +3,15 @@
 declare(strict_types=1);
 
 /**
- * M1 安装向导(CLI):建库 → 迁移 → 管理员 → 写配置。
+ * 安装向导(CLI,10 §3):委托 InstallService(与 M3 Web 向导同一入口)。
  * 用法:
  *   php bin/install.php --db=sqlite [--path=storage/data.db]
  *   php bin/install.php --db=mysql --host=127.0.0.1 --dbname=penblog --user=root --pass=secret
  *   通用:--admin-user= --admin-pass= --admin-email= --site-title= --url= [--force]
  */
 
-use PenBlog\Kernel\Kernel;
-use PenBlog\Repository\DriverFactory;
-use PenBlog\Repository\MysqlDriver;
+use PenBlog\Install\InstallPlan;
+use PenBlog\Install\InstallService;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -22,22 +21,12 @@ $options = getopt('', [
 ]);
 
 $db = $options['db'] ?? 'sqlite';
-$adminUser = $options['admin-user'] ?? 'admin';
-$adminPass = $options['admin-pass'] ?? bin2hex(random_bytes(8));
-$adminEmail = $options['admin-email'] ?? 'admin@example.com';
-$siteTitle = $options['site-title'] ?? 'My PenBlog';
-$force = array_key_exists('force', $options);
-
-$configPath = __DIR__ . '/../config/config.php';
-if (is_file($configPath) && !$force) {
-    fwrite(STDERR, "config/config.php already exists. Use --force to overwrite.\n");
-    exit(1);
-}
+$rootDir = dirname(__DIR__);
 
 $dbConfig = match ($db) {
     'sqlite' => [
         'driver' => 'sqlite',
-        'path' => $options['path'] ?? __DIR__ . '/../storage/data.db',
+        'path' => $options['path'] ?? $rootDir . '/storage/data.db',
     ],
     'mysql' => [
         'driver' => 'mysql',
@@ -50,57 +39,30 @@ $dbConfig = match ($db) {
     default => exit(fwrite(STDERR, "Unknown db driver: {$db}\n") ?: 1),
 };
 
-if ($db === 'mysql') {
-    MysqlDriver::ensureDatabase(
-        $dbConfig['host'], $dbConfig['port'], $dbConfig['database'], $dbConfig['username'], $dbConfig['password'],
-    );
-}
-
-$kernel = Kernel::fromConfig([
-    'app' => ['debug' => false, 'url' => $options['url'] ?? 'http://localhost:8080', 'secret_key' => null],
-    'db' => $dbConfig,
-    'paths' => ['logs' => __DIR__ . '/../storage/logs/app.log'],
-]);
-
-$applied = $kernel->container->get(\PenBlog\Repository\Migrator::class)->run();
-echo 'Migrations applied: ' . (implode(', ', $applied) ?: 'none (already up to date)') . "\n";
-
-$driver = $kernel->db();
-$now = gmdate('Y-m-d\TH:i:s\Z');
-$stmt = $driver->pdo()->prepare(
-    'INSERT INTO users (username, email, password_hash, display_name, role, created_at, updated_at)
-     VALUES (:u, :e, :p, :d, :r, :c, :c2)'
+$plan = new InstallPlan(
+    dbConfig: $dbConfig,
+    siteTitle: (string) ($options['site-title'] ?? 'My PenBlog'),
+    siteUrl: (string) ($options['url'] ?? 'http://localhost:8080'),
+    adminUser: (string) ($options['admin-user'] ?? 'admin'),
+    adminEmail: (string) ($options['admin-email'] ?? 'admin@example.com'),
+    adminPass: isset($options['admin-pass']) ? (string) $options['admin-pass'] : null,
+    force: array_key_exists('force', $options),
+    rootDir: $rootDir,
+    configPath: $rootDir . '/config/config.php',
 );
-$stmt->execute([
-    'u' => $adminUser,
-    'e' => $adminEmail,
-    'p' => password_hash($adminPass, PASSWORD_DEFAULT),
-    'd' => $adminUser,
-    'r' => 'admin',
-    'c' => $now,
-    'c2' => $now,
-]);
 
-$kernel->options()->set('site.title', $siteTitle);
-$kernel->options()->set('site.url', $options['url'] ?? 'http://localhost:8080');
-$kernel->options()->set('install.db', $db);
-
-$configFile = [
-    'app' => ['debug' => false, 'url' => $options['url'] ?? 'http://localhost:8080', 'secret_key' => bin2hex(random_bytes(32))],
-    'db' => $dbConfig,
-    'paths' => [
-        'logs' => __DIR__ . '/../storage/logs/app.log',
-        'themes' => __DIR__ . '/../themes',
-        'plugins' => __DIR__ . '/../plugins',
-    ],
-];
-$export = var_export($configFile, true);
-file_put_contents($configPath, "<?php\n\nreturn {$export};\n");
-
-echo "Installed.\n";
-echo "  admin user: {$adminUser}\n";
-if (($options['admin-pass'] ?? null) === null) {
-    echo "  admin pass: {$adminPass}   (随机生成,请立刻修改)\n";
+try {
+    $result = (new InstallService())->run($plan);
+} catch (\Throwable $e) {
+    fwrite(STDERR, '安装失败: ' . $e->getMessage() . "\n");
+    exit(1);
 }
-echo "  config:     {$configPath}\n";
+
+echo 'Migrations applied: ' . (implode(', ', $result['migrations']) ?: 'none (already up to date)') . "\n";
+echo "Installed.\n";
+echo "  admin user: {$plan->adminUser}\n";
+if ($result['passGenerated']) {
+    echo "  admin pass: {$result['adminPass']}   (随机生成,请立刻修改)\n";
+}
+echo "  config:     {$plan->configPath}\n";
 echo "Next: php -S 0.0.0.0:8080 -t public\n";
