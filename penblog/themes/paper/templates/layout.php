@@ -15,6 +15,7 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
 <title><?= View::e($title ?? $siteTitle ?? 'PenBlog') ?></title>
 <script>try{var t=localStorage.getItem('pb-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch(e){}</script>
 <link rel="stylesheet" href="/assets/paper.css">
+<?= $tokensCss ?? '' ?>
 </head>
 <body class="<?= View::e($bodyClass ?? '') ?>">
 <a class="skip-link" href="#main">跳到主内容</a>
@@ -26,6 +27,7 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
     <a href="/admin/notifications" <?= ($page ?? '') === 'notifications' ? 'aria-current="page"' : '' ?>>通知</a>
     <a href="/admin/notifications/preferences">通知偏好</a>
     <a href="/admin/plugins" <?= ($page ?? '') === 'plugins' ? 'aria-current="page"' : '' ?>>插件</a>
+    <a href="/admin/themes" <?= ($page ?? '') === 'themes' ? 'aria-current="page"' : '' ?>>主题</a>
     <?php foreach (($pluginMenu ?? []) as $pm): ?>
       <a href="<?= View::e($pm['item']->url) ?>"><?= View::e($pm['item']->label) ?></a>
     <?php endforeach; ?>
@@ -90,7 +92,7 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
 </header>
 <main id="main" class="container"><?= $content ?></main>
 <footer class="site-footer">
-  <div class="container">Powered by PenBlog · <?= View::e($siteTitle ?? '') ?></div>
+  <div class="container">Powered by PenBlog · <?= View::e($siteTitle ?? '') ?><?= ($footerText ?? '') !== '' ? ' · ' . View::e((string) $footerText) : '' ?></div>
 </footer>
 <?php endif; ?>
 <script src="/assets/paper.js?v=20261031a" defer></script>

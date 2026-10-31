@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.4.0-m6';
+    public const VERSION = '0.5.0-m7';
 
     public readonly Container $container;
     public readonly Router $router;
@@ -125,6 +125,16 @@ final class Kernel
             (string) $c->get(Config::class)->get('paths.plugins', dirname(__DIR__, 2) . '/plugins'),
         ));
 
+        // ---- 主题系统(03)----
+        $container->singleton(\PenBlog\Theme\ThemeManager::class, static function (Container $c): \PenBlog\Theme\ThemeManager {
+            $bundled = dirname(__DIR__, 2) . '/themes';
+            $dir = (string) $c->get(Config::class)->get('paths.themes', $bundled);
+            if (!is_dir($dir)) {
+                $dir = $bundled; // 配置指向缺失目录:回退发行内置,保证前台不白屏
+            }
+            return new \PenBlog\Theme\ThemeManager($c->get(Kernel::class), $dir);
+        });
+
         $this->addMiddleware(new \PenBlog\Http\BodyParserMiddleware());
         $this->addMiddleware(new \PenBlog\Http\AuthMiddleware($this->container));
         $this->addMiddleware(new \PenBlog\Http\CsrfMiddleware());
@@ -139,6 +149,7 @@ final class Kernel
         \PenBlog\Webhook\WebhookDispatcher::register($this);
         \PenBlog\Api\OpenApiRoutes::register($this);
         \PenBlog\Plugin\PluginRoutes::register($this);
+        \PenBlog\Theme\ThemeAdminRoutes::register($this);
     }
 
     /** @param array<string, mixed> $config */
@@ -238,6 +249,11 @@ final class Kernel
     public function plugins(): \PenBlog\Plugin\PluginManager
     {
         return $this->container->get(\PenBlog\Plugin\PluginManager::class);
+    }
+
+    public function theme(): \PenBlog\Theme\ThemeManager
+    {
+        return $this->container->get(\PenBlog\Theme\ThemeManager::class);
     }
 
     public function logger(): LoggerInterface

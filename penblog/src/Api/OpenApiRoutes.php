@@ -76,6 +76,13 @@ final class OpenApiRoutes
         'POST /api/v1/plugins/{name}:activate' => ['summary' => '激活插件(依赖拓扑 + onActivate)', 'permission' => 'system:manage'],
         'POST /api/v1/plugins/{name}:deactivate' => ['summary' => '停用插件(撤销其全部注册)', 'permission' => 'system:manage'],
         'DELETE /api/v1/plugins/{name}' => ['summary' => '卸载插件(清理 plugin.{name}.* 数据)', 'permission' => 'system:manage'],
+        // 主题系统(03 §7)
+        'GET /api/v1/themes' => ['summary' => '主题列表(含激活状态与发现错误)', 'permission' => 'system:manage'],
+        'POST /api/v1/themes/{name}:activate' => ['summary' => '激活主题(校验继承链完整)', 'permission' => 'system:manage'],
+        'POST /api/v1/themes/{name}:deactivate' => ['summary' => '停用主题(当前激活主题需先切换)', 'permission' => 'system:manage'],
+        'DELETE /api/v1/themes/{name}' => ['summary' => '卸载主题(清理 theme.{name}.* 设置,文件保留)', 'permission' => 'system:manage'],
+        'GET /api/v1/themes/{name}/settings' => ['summary' => '主题设置(声明 schema + 当前值)', 'permission' => 'system:manage'],
+        'PUT /api/v1/themes/{name}/settings' => ['summary' => '保存主题设置(按声明类型校验/钳制)', 'permission' => 'system:manage'],
     ];
 
     /** 集合 GET 端点共用的列表查询参数(06 §4) */

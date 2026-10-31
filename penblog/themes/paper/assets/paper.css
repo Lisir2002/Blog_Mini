@@ -146,6 +146,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); width: 64px; margin: 
   grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: var(--space-lg);
 }
+.grid-single { grid-template-columns: 1fr; } /* 主题 Setting layout=list 时单列 */
 /* 卡片形态对所在容器宽度负责(§3.1:组件一律容器查询,与视口解耦) */
 .card-slot { container-type: inline-size; display: flex; flex-direction: column; }
 .card {

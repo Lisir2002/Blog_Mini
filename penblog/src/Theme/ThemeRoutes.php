@@ -35,14 +35,14 @@ final class ThemeRoutes
         $posts = static fn (): PostRepository => $c->get(PostRepository::class);
         $users = static fn (): UserRepository => $c->get(UserRepository::class);
 
-        // ---- 静态资源(basename 白名单,防目录穿越)----
+        // ---- 静态资源(03 §6:沿继承链解析 assets/{file},basename 白名单)----
         $router->get('/assets/{file}', static function (ServerRequestInterface $req) use ($kernel): ResponseInterface {
             $file = (string) (Body::routeParams($req)['file'] ?? '');
             if (!preg_match('/^[a-z0-9_-]+\.(css|js|svg|png|jpg|woff2)$/', $file)) {
                 return new Response(404);
             }
-            $path = self::themeDir($kernel) . '/assets/' . $file;
-            if (!is_file($path)) {
+            $path = $kernel->theme()->assetPath($kernel->theme()->active(), $file);
+            if ($path === null) {
                 return new Response(404);
             }
             $type = match (true) {
@@ -60,8 +60,14 @@ final class ThemeRoutes
 
         // ---- 首页 ----
         $router->get('/', static function (ServerRequestInterface $req) use ($kernel, $posts): ResponseInterface {
+            $params = Body::listQuery($req->getQueryParams());
+            // 主题 Setting post_per_page(03 §5):未显式指定 size 时生效
+            $perPage = (int) $kernel->theme()->activeOption('post_per_page', 0);
+            if ($perPage >= 3 && $perPage <= 50 && !isset($params['size'])) {
+                $params['size'] = $perPage;
+            }
             $result = $posts()->query(
-                ListQuery::fromParams(Body::listQuery($req->getQueryParams())),
+                ListQuery::fromParams($params),
                 Gate::anonymous(),
             );
             /** @var list<Post> $items */
@@ -656,12 +662,15 @@ final class ThemeRoutes
         string $shell = 'site',
         int $status = 200,
     ): ResponseInterface {
-        $dir = self::themeDir($kernel);
+        $manager = $kernel->theme();
+        $active = $manager->active();
         $siteTitle = (string) $kernel->options()->get('site.title', 'PenBlog');
         $gate = AuthMiddleware::gate($req);
-        $content = View::render("{$dir}/templates/{$tpl}.php", $data + [
+        $content = View::render($manager->templatePath($active, $tpl), $data + [
             'siteTitle' => $siteTitle,
             'csrf' => self::csrf($req),
+            'theme' => $manager,
+            'themeName' => $active,
         ]);
         $bellItems = [];
         $bellUnread = 0;
@@ -677,7 +686,7 @@ final class ThemeRoutes
         // MenuItem 扩展点(04 §4):插件注册的菜单项注入 layout
         $pluginMenu = $shell === 'admin' ? $kernel->plugins()->menuItems('admin') : [];
         $siteMenu = $shell === 'site' ? $kernel->plugins()->menuItems('nav') : [];
-        $html = View::render("{$dir}/templates/layout.php", [
+        $html = View::render($manager->templatePath($active, 'layout'), [
             'content' => $content,
             'title' => $title !== null ? "{$title} · {$siteTitle}" : $siteTitle,
             'siteTitle' => $siteTitle,
@@ -691,6 +700,8 @@ final class ThemeRoutes
             'bellUnread' => $bellUnread,
             'pluginMenu' => $pluginMenu,
             'siteMenu' => $siteMenu,
+            'tokensCss' => $manager->tokensCss($active),
+            'footerText' => (string) $manager->activeOption('footer_text', ''),
         ]);
         return $kernel->html($html, $status);
     }
@@ -710,13 +721,6 @@ final class ThemeRoutes
             $out[$name] = $user?->displayName() ?? $name;
         }
         return $out;
-    }
-
-    private static function themeDir(Kernel $kernel): string
-    {
-        $active = preg_replace('/[^a-z0-9_-]/', '', (string) $kernel->options()->get('active_theme', 'paper'));
-        $dir = dirname(__DIR__, 2) . '/themes/' . ($active !== '' ? $active : 'paper');
-        return is_dir($dir) ? $dir : dirname(__DIR__, 2) . '/themes/paper';
     }
 
     private static function csrf(ServerRequestInterface $req): string

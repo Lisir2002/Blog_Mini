@@ -1,0 +1,48 @@
+{
+  "name": "ink",
+  "displayName": "Ink 墨",
+  "version": "1.0.0",
+  "author": "PenBlog",
+  "description": "青墨配色示例子主题:演示 tokens 覆盖、darkMode 与声明式 Setting。",
+  "tags": ["minimal"],
+  "extends": "paper",
+  "tokens": {
+    "color.accent": "#0F766E",
+    "color.accent-hover": "#115E59"
+  },
+  "darkMode": {
+    "strategy": "class",
+    "tokens": {
+      "color.accent": "#5EEEE0"
+    }
+  },
+  "settings": [
+    {
+      "name": "footer_text",
+      "type": "textarea",
+      "label": "页脚文字",
+      "default": ""
+    },
+    {
+      "name": "post_per_page",
+      "type": "number",
+      "label": "每页文章数",
+      "default": 10,
+      "min": 3,
+      "max": 50
+    },
+    {
+      "name": "show_excerpt",
+      "type": "boolean",
+      "label": "列表显示摘要",
+      "default": true
+    },
+    {
+      "name": "layout",
+      "type": "radio",
+      "label": "列表布局",
+      "options": ["list", "grid"],
+      "default": "grid"
+    }
+  ]
+}
