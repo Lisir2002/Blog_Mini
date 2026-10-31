@@ -1,0 +1,9 @@
+{
+  "name": "probe",
+  "version": "0.1.0",
+  "requires": { "penblog": ">=0.1" },
+  "entry": "Probe\\Plugin",
+  "permissions": ["event.listen", "router.register", "option.read", "option.write", "secret.read", "secret.write"],
+  "secretRefs": ["token"],
+  "description": "integration test probe"
+}

@@ -24,6 +24,12 @@ final class ExtensionRegistry
         $this->typeMap[$kind] = $class;
     }
 
+    /** 撤销类型注册(04 §2 插件 deactivate 回收 ExtensionKind)。 */
+    public function unregisterType(string $kind): void
+    {
+        unset($this->typeMap[$kind]);
+    }
+
     /** 注册即 upsert:同名同 kind 覆盖 spec,status,resourceVersion 递增。 */
     public function register(Extension $extension): Extension
     {

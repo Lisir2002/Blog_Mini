@@ -637,6 +637,12 @@ final class ThemeRoutes
         return self::page($kernel, $req, '404', [], null, '页面不存在', 'site', 404);
     }
 
+    /** 子系统后台页渲染入口(04 §8 插件页复用主题 layout)。 */
+    public static function renderAdmin(Kernel $kernel, ServerRequestInterface $req, string $tpl, array $data, ?string $activePage, ?string $title = null): ResponseInterface
+    {
+        return self::page($kernel, $req, $tpl, $data, $activePage, $title, 'admin');
+    }
+
     /**
      * @param array<string, mixed> $data
      */
@@ -668,6 +674,9 @@ final class ThemeRoutes
                 // 通知子系统不可用不影响页面渲染
             }
         }
+        // MenuItem 扩展点(04 §4):插件注册的菜单项注入 layout
+        $pluginMenu = $shell === 'admin' ? $kernel->plugins()->menuItems('admin') : [];
+        $siteMenu = $shell === 'site' ? $kernel->plugins()->menuItems('nav') : [];
         $html = View::render("{$dir}/templates/layout.php", [
             'content' => $content,
             'title' => $title !== null ? "{$title} · {$siteTitle}" : $siteTitle,
@@ -680,6 +689,8 @@ final class ThemeRoutes
             'csrf' => self::csrf($req),
             'bellItems' => $bellItems,
             'bellUnread' => $bellUnread,
+            'pluginMenu' => $pluginMenu,
+            'siteMenu' => $siteMenu,
         ]);
         return $kernel->html($html, $status);
     }

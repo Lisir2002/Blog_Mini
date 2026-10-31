@@ -1,0 +1,8 @@
+{
+  "name": "dep-user",
+  "version": "0.1.0",
+  "requires": { "plugins": ["probe"] },
+  "entry": "DepUser\\Plugin",
+  "permissions": [],
+  "description": "depends on probe"
+}

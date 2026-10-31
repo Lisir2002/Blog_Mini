@@ -25,6 +25,10 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
     <a href="/admin/posts/new">写文章</a>
     <a href="/admin/notifications" <?= ($page ?? '') === 'notifications' ? 'aria-current="page"' : '' ?>>通知</a>
     <a href="/admin/notifications/preferences">通知偏好</a>
+    <a href="/admin/plugins" <?= ($page ?? '') === 'plugins' ? 'aria-current="page"' : '' ?>>插件</a>
+    <?php foreach (($pluginMenu ?? []) as $pm): ?>
+      <a href="<?= View::e($pm['item']->url) ?>"><?= View::e($pm['item']->label) ?></a>
+    <?php endforeach; ?>
     <a href="/" target="_blank" rel="noopener">查看站点</a>
   </aside>
   <div class="admin-main">
@@ -74,6 +78,9 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
     <a class="site-logo" href="/"><?= View::e($siteTitle ?? 'PenBlog') ?></a>
     <nav class="nav-links" aria-label="主导航">
       <a href="/" <?= ($page ?? '') === 'home' ? 'aria-current="page"' : '' ?>>首页</a>
+      <?php foreach (($siteMenu ?? []) as $sm): ?>
+        <a href="<?= View::e($sm['item']->url) ?>"><?= View::e($sm['item']->label) ?></a>
+      <?php endforeach; ?>
       <?php if (!empty($authed)): ?>
         <a href="/admin/dashboard" <?= ($page ?? '') === 'dashboard' ? 'aria-current="page"' : '' ?>>后台</a>
       <?php endif; ?>

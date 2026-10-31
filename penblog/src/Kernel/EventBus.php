@@ -12,16 +12,39 @@ use Psr\EventDispatcher\EventDispatcherInterface;
  * - doAction/applyFilters:WordPress 式钩子;Filter 必须返回值,链式传递。
  * priority 默认 10,越小越先执行;同 priority 按注册顺序。
  */
-final class EventBus implements EventDispatcherInterface
+class EventBus implements EventDispatcherInterface
 {
     /** @var array<string, list<array{priority:int, seq:int, handler:callable}>> */
     private array $listeners = [];
 
+    /** @var array<int, string> 句柄 => 钩子名(04 §2 可撤销注册) */
+    private array $handles = [];
+
     private int $seq = 0;
 
-    public function listen(string $key, callable $handler, int $priority = 10): void
+    /** @return int 注册句柄,unlisten 回收用(04 §2 硬约束) */
+    public function listen(string $key, callable $handler, int $priority = 10): int
     {
-        $this->listeners[$key][] = ['priority' => $priority, 'seq' => $this->seq++, 'handler' => $handler];
+        $id = $this->seq++;
+        $this->listeners[$key][] = ['priority' => $priority, 'seq' => $id, 'handler' => $handler];
+        $this->handles[$id] = $key;
+        return $id;
+    }
+
+    public function unlisten(int $handle): void
+    {
+        $key = $this->handles[$handle] ?? null;
+        if ($key === null) {
+            return;
+        }
+        $this->listeners[$key] = array_values(array_filter(
+            $this->listeners[$key],
+            static fn (array $l): bool => $l['seq'] !== $handle,
+        ));
+        if ($this->listeners[$key] === []) {
+            unset($this->listeners[$key]);
+        }
+        unset($this->handles[$handle]);
     }
 
     public function dispatch(object $event): object

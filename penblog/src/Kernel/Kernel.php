@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.3.0-m3';
+    public const VERSION = '0.4.0-m6';
 
     public readonly Container $container;
     public readonly Router $router;
@@ -31,6 +31,8 @@ final class Kernel
     private array $globalMiddleware = [];
 
     private bool $installing = false;
+
+    private bool $pluginsBooted = false;
 
     private ?\PenBlog\Install\InstallWizard $wizard = null;
 
@@ -117,6 +119,12 @@ final class Kernel
             $c->get(LoggerInterface::class),
         ));
 
+        // ---- 插件系统(04)----
+        $container->singleton(\PenBlog\Plugin\PluginManager::class, static fn (Container $c): \PenBlog\Plugin\PluginManager => new \PenBlog\Plugin\PluginManager(
+            $c->get(Kernel::class),
+            (string) $c->get(Config::class)->get('paths.plugins', dirname(__DIR__, 2) . '/plugins'),
+        ));
+
         $this->addMiddleware(new \PenBlog\Http\BodyParserMiddleware());
         $this->addMiddleware(new \PenBlog\Http\AuthMiddleware($this->container));
         $this->addMiddleware(new \PenBlog\Http\CsrfMiddleware());
@@ -130,6 +138,7 @@ final class Kernel
         \PenBlog\Notification\NotificationService::register($this);
         \PenBlog\Webhook\WebhookDispatcher::register($this);
         \PenBlog\Api\OpenApiRoutes::register($this);
+        \PenBlog\Plugin\PluginRoutes::register($this);
     }
 
     /** @param array<string, mixed> $config */
@@ -166,6 +175,10 @@ final class Kernel
         try {
             if ($this->installing) {
                 return $this->installingResponse($request);
+            }
+            if (!$this->pluginsBooted) {
+                $this->pluginsBooted = true;
+                $this->plugins()->boot();
             }
             $match = $this->router->match($request->getMethod(), $request->getUri()->getPath());
             if ($match === null) {
@@ -220,6 +233,11 @@ final class Kernel
     public function extensions(): ExtensionRegistry
     {
         return $this->container->get(ExtensionRegistry::class);
+    }
+
+    public function plugins(): \PenBlog\Plugin\PluginManager
+    {
+        return $this->container->get(\PenBlog\Plugin\PluginManager::class);
     }
 
     public function logger(): LoggerInterface

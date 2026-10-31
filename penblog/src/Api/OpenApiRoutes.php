@@ -70,6 +70,12 @@ final class OpenApiRoutes
         'GET /api/v1/webhooks/{id}/deliveries' => ['summary' => '投递记录', 'permission' => 'system:manage'],
         'DELETE /api/v1/webhooks/{id}' => ['summary' => '删除 Webhook', 'permission' => 'system:manage'],
         'POST /api/v1/webhooks/{id}:test' => ['summary' => '发送测试事件', 'permission' => 'system:manage'],
+        // 插件系统(04 §8)
+        'GET /api/v1/plugins' => ['summary' => '插件列表(含未安装)', 'permission' => 'system:manage'],
+        'POST /api/v1/plugins/{name}:install' => ['summary' => '安装插件(校验 manifest 与 requires)', 'permission' => 'system:manage'],
+        'POST /api/v1/plugins/{name}:activate' => ['summary' => '激活插件(依赖拓扑 + onActivate)', 'permission' => 'system:manage'],
+        'POST /api/v1/plugins/{name}:deactivate' => ['summary' => '停用插件(撤销其全部注册)', 'permission' => 'system:manage'],
+        'DELETE /api/v1/plugins/{name}' => ['summary' => '卸载插件(清理 plugin.{name}.* 数据)', 'permission' => 'system:manage'],
     ];
 
     /** 集合 GET 端点共用的列表查询参数(06 §4) */
@@ -94,7 +100,10 @@ final class OpenApiRoutes
             if (!str_starts_with($route['pattern'], '/api/v1/')) {
                 continue;
             }
-            $meta = self::META[$route['method'] . ' ' . $route['pattern']] ?? null;
+            // 插件动态端点元数据(04 §4 APIEndpoint):激活后经 Context 记账并入文档
+            $meta = self::META[$route['method'] . ' ' . $route['pattern']]
+                ?? $kernel->plugins()->apiMeta()[$route['method'] . ' ' . $route['pattern']]
+                ?? null;
             $operationId = self::operationId($route['method'], $route['pattern']);
             $operation = [
                 'operationId' => $operationId,
@@ -104,6 +113,9 @@ final class OpenApiRoutes
             ];
             if ($meta === null) {
                 $operation['x-undocumented'] = true;
+            }
+            if (($meta['plugin'] ?? null) !== null) {
+                $operation['x-plugin'] = $meta['plugin'];
             }
             if (($meta['permission'] ?? null) !== null) {
                 $operation['x-permission'] = $meta['permission'];

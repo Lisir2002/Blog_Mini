@@ -1,0 +1,8 @@
+{
+  "name": "cycle-b",
+  "version": "0.1.0",
+  "requires": { "plugins": ["cycle-a"] },
+  "entry": "CycleB\\Plugin",
+  "permissions": [],
+  "description": "circular dependency fixture B"
+}

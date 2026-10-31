@@ -1,0 +1,9 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "requires": { "penblog": ">=0.1", "php": ">=8.2" },
+  "entry": "HelloWorld\\Plugin",
+  "permissions": ["event.listen", "router.register", "menu.register", "settings.register", "option.read", "option.write"],
+  "description": "示例插件:演示路由/菜单/设置区块/钩子/命名空间配置等扩展点。",
+  "providesHooks": ["plugin.hello-world.greeted"]
+}

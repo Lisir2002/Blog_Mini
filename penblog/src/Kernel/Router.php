@@ -53,6 +53,16 @@ final class Router
         $this->add('DELETE', $pattern, $handler, $middleware);
     }
 
+    /** 撤销注册(04 §2 硬约束):按 method+pattern 精确移除。 */
+    public function remove(string $method, string $pattern): void
+    {
+        $method = strtoupper($method);
+        $this->routes = array_values(array_filter(
+            $this->routes,
+            static fn (array $r): bool => !($r['method'] === $method && $r['pattern'] === $pattern),
+        ));
+    }
+
     /** 注册表快照(06 §7 OpenAPI 导出用):不含 handler。 @return list<array{method:string, pattern:string}> */
     public function routes(): array
     {

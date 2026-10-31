@@ -1,0 +1,8 @@
+{
+  "name": "perm-abuse",
+  "version": "0.1.0",
+  "requires": {},
+  "entry": "PermAbuse\\Plugin",
+  "permissions": ["option.read"],
+  "description": "calls registerRoute without router.register permission"
+}
