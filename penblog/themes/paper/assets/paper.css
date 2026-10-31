@@ -426,9 +426,22 @@ details.field > .grid-2, details.field > .field { margin-block-start: var(--spac
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 .editor-preview {
+  display: none;
   margin-block-start: var(--space-md); padding: var(--space-md);
   border: 1px solid var(--color-border); border-radius: var(--radius-md);
   background: var(--color-surface); max-height: 60vh; overflow-y: auto;
+}
+/* 分屏预览(11 §3.3):布局分支全在 CSS,JS 只切类、不读窗口宽度 */
+.editor-main.preview-on .editor-preview { display: block; }
+@media (max-width: 1023.98px) {
+  .editor-main.preview-on .md-textarea { display: none; } /* 窄屏:整页切换 */
+}
+@media (min-width: 1024px) {
+  .editor-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .editor-toolbar { grid-column: 1 / -1; }
+  .editor-preview { display: block; } /* 桌面:默认左右分屏 */
+  .editor-main.preview-off .editor-preview { display: none; }
+  .editor-main.preview-off .md-textarea { grid-column: 1 / -1; }
 }
 .editor-side {
   padding: var(--space-md); background: var(--color-surface);

@@ -15,8 +15,8 @@ use PenBlog\Theme\View;
   <?php endif; ?>
   <?php if ($conflict): ?>
     <div class="alert alert-danger" role="alert">
-      <strong>保存冲突:</strong>这篇内容已被他人(或另一标签页)修改过。你的输入已完整保留在下方,
-      建议先复制正文备份,再 <a href="<?= View::e($action) ?>">重新加载最新版本</a> 后合并修改。
+      <strong>保存冲突:</strong>存在更新版本,本地副本已保存,请复制后重试——
+      你的输入已完整保留在下方,建议先复制正文备份,再 <a href="<?= View::e($action) ?>">重新加载最新版本</a> 后合并修改。
     </div>
   <?php elseif (!empty($error)): ?>
     <div class="alert alert-danger" role="alert"><?= View::e($error) ?></div>
@@ -34,20 +34,26 @@ use PenBlog\Theme\View;
           <button type="button" class="tb-btn" data-md="bold" title="加粗 (Ctrl+B)" aria-label="加粗"><strong>B</strong></button>
           <button type="button" class="tb-btn" data-md="italic" title="斜体 (Ctrl+I)" aria-label="斜体"><em>I</em></button>
           <button type="button" class="tb-btn" data-md="strike" title="删除线 (Ctrl+D)" aria-label="删除线"><s>S</s></button>
-          <button type="button" class="tb-btn" data-md="link" title="链接 (Ctrl+K)" aria-label="插入链接">🔗</button>
+          <button type="button" class="tb-btn" data-md="heading" title="标题(循环 H1-H3)" aria-label="标题循环 H1 至 H3">H</button>
+          <button type="button" class="tb-btn" data-md="list" title="无序列表" aria-label="插入无序列表">•≡</button>
+          <button type="button" class="tb-btn" data-md="olist" title="有序列表" aria-label="插入有序列表">1≡</button>
+          <button type="button" class="tb-btn" data-md="task" title="任务项" aria-label="插入任务项">☑</button>
+          <button type="button" class="tb-btn" data-md="quote" title="引用" aria-label="插入引用">❝</button>
           <button type="button" class="tb-btn" data-md="code" title="行内代码" aria-label="行内代码">&lt;/&gt;</button>
           <button type="button" class="tb-btn" data-md="block" title="代码块" aria-label="插入代码块">{ }</button>
-          <button type="button" class="tb-btn" data-md="quote" title="引用" aria-label="插入引用">❝</button>
-          <button type="button" class="tb-btn" data-md="heading" title="标题" aria-label="插入标题">H</button>
-          <button type="button" class="tb-btn" data-md="list" title="无序列表" aria-label="插入列表">•≡</button>
+          <button type="button" class="tb-btn" data-md="link" title="链接 (Ctrl+K)" aria-label="插入链接">🔗</button>
+          <button type="button" class="tb-btn" data-md="image" title="图片(外链 URL)" aria-label="插入图片">🖼</button>
           <button type="button" class="tb-btn" data-md="table" title="表格" aria-label="插入表格">▦</button>
+          <button type="button" class="tb-btn" data-md="hr" title="分割线" aria-label="插入分割线">—</button>
+          <button type="button" class="tb-btn" data-md="footnote" title="脚注" aria-label="插入脚注">¹</button>
+          <button type="button" class="tb-btn" data-md="break" title="摘要分隔符" aria-label="插入摘要分隔符">✂</button>
           <span class="tb-spacer" aria-hidden="true"></span>
-          <span class="meta" id="md-count" aria-live="off">0 字符</span>
+          <span class="meta" id="md-count" aria-live="off">中文 0 字 · 英文 0 词</span>
           <button type="button" class="btn btn-secondary btn-sm" id="preview-toggle" aria-pressed="false" title="预览 (Ctrl+Shift+P)">预览</button>
         </div>
         <textarea id="md-body" name="bodyMd" class="md-textarea" rows="18" spellcheck="false"
                   placeholder="用 Markdown 写作…支持 GFM 表格/任务列表/脚注,原始 HTML 将被转义。"><?= View::e($values['bodyMd']) ?></textarea>
-        <div id="md-preview" class="prose editor-preview" hidden aria-label="渲染预览"></div>
+        <div id="md-preview" class="prose editor-preview" aria-label="渲染预览"></div>
       </div>
 
       <aside class="editor-side" aria-label="文章设置">

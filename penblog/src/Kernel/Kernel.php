@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.8.0-m10';
+    public const VERSION = '0.9.0-m11';
 
     public readonly Container $container;
     public readonly Router $router;

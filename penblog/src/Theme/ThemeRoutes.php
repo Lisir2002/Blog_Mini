@@ -405,14 +405,14 @@ final class ThemeRoutes
                     $conflict = $e->errorCode === 'resource_version_conflict';
                 }
             }
-            // 冲突/校验失败:回显用户输入,绝不静默丢弃(11 §3.4)
+            // 冲突/校验失败:回显用户输入,绝不静默丢弃(11 §3.4);冲突页按 200 正常渲染表单
             return self::editorPage($kernel, $req, [
                 'post' => null, 'values' => $values,
                 'resourceVersion' => $rv !== '' && ctype_digit($rv) ? (int) $rv : null,
                 'action' => '/admin/posts/' . rawurlencode($slug) . '/edit',
                 'draftKey' => $slug, 'heading' => '编辑文章',
                 'error' => $error, 'conflict' => $conflict, 'saved' => false,
-            ], $conflict ? 409 : 400);
+            ], $conflict ? 200 : 400);
         });
 
         // 服务端权威预览(11 §3.3):防抖调用,返回已净化 HTML 片段。

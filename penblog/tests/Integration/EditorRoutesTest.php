@@ -35,6 +35,22 @@ final class EditorRoutesTest extends KernelTestCase
         self::assertStringContainsString('/assets/editor.js', $html);
     }
 
+    /** 工具栏全量按钮(11 §3.1),每个均带 aria-label。 */
+    public function testToolbarCoversFullButtonList(): void
+    {
+        $res = $this->kernel->handle($this->authRequest('GET', '/admin/posts/new', $this->admin()));
+        $html = (string) $res->getBody();
+        foreach (['bold', 'italic', 'strike', 'heading', 'list', 'olist', 'task', 'quote',
+            'code', 'block', 'link', 'image', 'table', 'hr', 'footnote', 'break'] as $action) {
+            self::assertStringContainsString('data-md="' . $action . '"', $html, "toolbar action {$action}");
+        }
+        preg_match_all('/<button[^>]*class="[^"]*tb-btn[^>]*>/', $html, $btns);
+        self::assertNotEmpty($btns[0]);
+        foreach ($btns[0] as $btn) {
+            self::assertStringContainsString('aria-label', $btn, '每个图标按钮必须有 aria-label');
+        }
+    }
+
     public function testCreateDraftFromForm(): void
     {
         $res = $this->kernel->handle($this->authRequest('POST', '/admin/posts/new', $this->admin(), [
@@ -109,13 +125,49 @@ final class EditorRoutesTest extends KernelTestCase
             'title' => '冲突站', 'slug' => 'rv-clash', 'bodyMd' => '我的未保存输入', 'status' => 'draft',
             'resourceVersion' => '999999',
         ]));
-        self::assertSame(409, $res->getStatusCode());
+        self::assertSame(200, $res->getStatusCode()); // 冲突页按 200 正常渲染表单,绝不静默丢弃(11 §3.4)
         $html = (string) $res->getBody();
         self::assertStringContainsString('保存冲突', $html);
+        self::assertStringContainsString('存在更新版本,本地副本已保存,请复制后重试', $html);
+        self::assertStringContainsString('alert-danger', $html);
         self::assertStringContainsString('我的未保存输入', $html); // 绝不静默丢弃(11 §3.4)
         $post = $this->kernel->extensions()->find(Post::KIND, 'rv-clash');
         self::assertInstanceOf(Post::class, $post);
         self::assertSame('服务器版本', $post->bodyMd()); // 未被覆盖
+    }
+
+    /** 两个编辑会话先后携带同一 resourceVersion 保存:后一次得到冲突横幅且输入未丢。 */
+    public function testTwoSessionsSameResourceVersionSecondConflicts(): void
+    {
+        $admin = $this->admin();
+        $this->kernel->handle($this->authRequest('POST', '/admin/posts/new', $admin, [
+            'title' => '双会话', 'slug' => 'rv-two', 'bodyMd' => 'v0', 'status' => 'published',
+        ]));
+        $html = (string) $this->kernel->handle($this->authRequest('GET', '/admin/posts/rv-two/edit', $admin))->getBody();
+        preg_match('/name="resourceVersion" value="(\d+)"/', $html, $m);
+        self::assertNotEmpty($m[1] ?? '');
+        $sharedRv = $m[1];
+
+        // 会话 A 先保存成功
+        $resA = $this->kernel->handle($this->authRequest('POST', '/admin/posts/rv-two/edit', $admin, [
+            'title' => '双会话', 'slug' => 'rv-two', 'bodyMd' => '会话A的版本', 'status' => 'published',
+            'resourceVersion' => $sharedRv,
+        ]));
+        self::assertSame(302, $resA->getStatusCode());
+
+        // 会话 B 仍持旧 resourceVersion → 冲突回显,不覆盖
+        $resB = $this->kernel->handle($this->authRequest('POST', '/admin/posts/rv-two/edit', $admin, [
+            'title' => '双会话', 'slug' => 'rv-two', 'bodyMd' => '会话B的输入', 'status' => 'published',
+            'resourceVersion' => $sharedRv,
+        ]));
+        self::assertSame(200, $resB->getStatusCode());
+        $htmlB = (string) $resB->getBody();
+        self::assertStringContainsString('alert-danger', $htmlB);
+        self::assertStringContainsString('冲突', $htmlB);
+        self::assertStringContainsString('会话B的输入', $htmlB);
+        $post = $this->kernel->extensions()->find(Post::KIND, 'rv-two');
+        self::assertInstanceOf(Post::class, $post);
+        self::assertSame('会话A的版本', $post->bodyMd());
     }
 
     public function testPreviewRendersGfmAndSanitizes(): void
@@ -135,6 +187,30 @@ final class EditorRoutesTest extends KernelTestCase
     {
         $res = $this->kernel->handle($this->request('POST', '/admin/preview', ['bodyMd' => 'x']));
         self::assertSame(401, $res->getStatusCode());
+    }
+
+    public function testPreviewRendersInlineMarkdown(): void
+    {
+        $res = $this->kernel->handle($this->authRequest('POST', '/admin/preview', $this->admin(), [
+            'bodyMd' => "**粗体** 与 ~~删除~~ 及 `code`",
+        ]));
+        self::assertSame(200, $res->getStatusCode());
+        $html = (string) $res->getBody();
+        self::assertStringContainsString('<strong>粗体</strong>', $html);
+        self::assertStringContainsString('<del>删除</del>', $html);
+        self::assertStringContainsString('<code>code</code>', $html);
+    }
+
+    /** 非法 CSRF:双提交不一致按 CsrfMiddleware 行为拒绝(403)。 */
+    public function testPreviewRejectsInvalidCsrf(): void
+    {
+        $cookies = $this->admin();
+        $res = $this->kernel->handle($this->request('POST', '/admin/preview',
+            ['bodyMd' => '**粗**'],
+            ['X-CSRF-Token' => 'wrong-token'],
+            $cookies,
+        ));
+        self::assertSame(403, $res->getStatusCode());
     }
 
     public function testDashboardPublishActionDoesNotDelete(): void
