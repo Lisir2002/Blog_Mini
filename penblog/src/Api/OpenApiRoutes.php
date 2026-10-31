@@ -83,6 +83,11 @@ final class OpenApiRoutes
         'DELETE /api/v1/themes/{name}' => ['summary' => '卸载主题(清理 theme.{name}.* 设置,文件保留)', 'permission' => 'system:manage'],
         'GET /api/v1/themes/{name}/settings' => ['summary' => '主题设置(声明 schema + 当前值)', 'permission' => 'system:manage'],
         'PUT /api/v1/themes/{name}/settings' => ['summary' => '保存主题设置(按声明类型校验/钳制)', 'permission' => 'system:manage'],
+        // 菜单系统(03 §7)
+        'GET /api/v1/menus' => ['summary' => '菜单列表(全部位置)', 'permission' => 'system:manage'],
+        'GET /api/v1/menus/{location}' => ['summary' => '单个菜单(条目 + resourceVersion)', 'permission' => 'system:manage'],
+        'PUT /api/v1/menus/{location}' => ['summary' => '保存菜单(校验后整表覆盖)', 'permission' => 'system:manage'],
+        'DELETE /api/v1/menus/{location}' => ['summary' => '删除菜单(前台回退默认导航)', 'permission' => 'system:manage'],
     ];
 
     /** 集合 GET 端点共用的列表查询参数(06 §4) */

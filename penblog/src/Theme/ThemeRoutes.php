@@ -66,8 +66,9 @@ final class ThemeRoutes
             if ($perPage >= 3 && $perPage <= 50 && !isset($params['size'])) {
                 $params['size'] = $perPage;
             }
+            // 菜单 category 条目落地页(03 §7):放行 author/category/tag 过滤
             $result = $posts()->query(
-                ListQuery::fromParams($params),
+                ListQuery::fromParams($params, ['name', 'creation_timestamp'], ['author', 'category', 'tag']),
                 Gate::anonymous(),
             );
             /** @var list<Post> $items */
@@ -700,6 +701,9 @@ final class ThemeRoutes
             'bellUnread' => $bellUnread,
             'pluginMenu' => $pluginMenu,
             'siteMenu' => $siteMenu,
+            // 菜单系统(03 §7):主题渲染辅助,失效条目已在 resolve 中丢弃
+            'primaryMenu' => $shell === 'site' ? $kernel->menus()->resolve('primary') : [],
+            'footerMenu' => $shell === 'site' ? $kernel->menus()->resolve('footer') : [],
             'tokensCss' => $manager->tokensCss($active),
             'footerText' => (string) $manager->activeOption('footer_text', ''),
             'updateInfo' => $shell === 'admin' ? $kernel->updateAvailable() : null,

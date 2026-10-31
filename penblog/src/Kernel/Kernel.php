@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.6.0-m8';
+    public const VERSION = '0.7.0-m9';
 
     public readonly Container $container;
     public readonly Router $router;
@@ -137,6 +137,11 @@ final class Kernel
             return new \PenBlog\Theme\ThemeManager($c->get(Kernel::class), $dir);
         });
 
+        // ---- 菜单系统(03 §7)----
+        $container->singleton(\PenBlog\Menu\MenuManager::class, static fn (Container $c): \PenBlog\Menu\MenuManager => new \PenBlog\Menu\MenuManager(
+            $c->get(Kernel::class),
+        ));
+
         $this->addMiddleware(new \PenBlog\Http\BodyParserMiddleware());
         $this->addMiddleware(new \PenBlog\Http\AuthMiddleware($this->container));
         $this->addMiddleware(new \PenBlog\Http\CsrfMiddleware());
@@ -152,6 +157,7 @@ final class Kernel
         \PenBlog\Api\OpenApiRoutes::register($this);
         \PenBlog\Plugin\PluginRoutes::register($this);
         \PenBlog\Theme\ThemeAdminRoutes::register($this);
+        \PenBlog\Menu\MenuAdminRoutes::register($this);
     }
 
     /** @param array<string, mixed> $config */
@@ -274,6 +280,11 @@ final class Kernel
     public function theme(): \PenBlog\Theme\ThemeManager
     {
         return $this->container->get(\PenBlog\Theme\ThemeManager::class);
+    }
+
+    public function menus(): \PenBlog\Menu\MenuManager
+    {
+        return $this->container->get(\PenBlog\Menu\MenuManager::class);
     }
 
     public function logger(): LoggerInterface

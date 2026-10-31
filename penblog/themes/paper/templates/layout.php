@@ -28,6 +28,7 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
     <a href="/admin/notifications/preferences">通知偏好</a>
     <a href="/admin/plugins" <?= ($page ?? '') === 'plugins' ? 'aria-current="page"' : '' ?>>插件</a>
     <a href="/admin/themes" <?= ($page ?? '') === 'themes' ? 'aria-current="page"' : '' ?>>主题</a>
+    <a href="/admin/menus" <?= ($page ?? '') === 'menus' ? 'aria-current="page"' : '' ?>>菜单</a>
     <?php foreach (($pluginMenu ?? []) as $pm): ?>
       <a href="<?= View::e($pm['item']->url) ?>"><?= View::e($pm['item']->label) ?></a>
     <?php endforeach; ?>
@@ -81,7 +82,9 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
   <div class="container">
     <a class="site-logo" href="/"><?= View::e($siteTitle ?? 'PenBlog') ?></a>
     <nav class="nav-links" aria-label="主导航">
-      <a href="/" <?= ($page ?? '') === 'home' ? 'aria-current="page"' : '' ?>>首页</a>
+      <?php foreach (($primaryMenu ?? []) as $pm): ?>
+        <a href="<?= View::e($pm['href']) ?>"<?= $pm['href'] === '/' && ($page ?? '') === 'home' ? ' aria-current="page"' : '' ?>><?= View::e($pm['label']) ?></a>
+      <?php endforeach; ?>
       <?php foreach (($siteMenu ?? []) as $sm): ?>
         <a href="<?= View::e($sm['item']->url) ?>"><?= View::e($sm['item']->label) ?></a>
       <?php endforeach; ?>
@@ -94,7 +97,16 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
 </header>
 <main id="main" class="container"><?= $content ?></main>
 <footer class="site-footer">
-  <div class="container">Powered by PenBlog · <?= View::e($siteTitle ?? '') ?><?= ($footerText ?? '') !== '' ? ' · ' . View::e((string) $footerText) : '' ?></div>
+  <div class="container">
+    <?php if (!empty($footerMenu)): ?>
+      <nav class="footer-links" aria-label="页脚导航">
+        <?php foreach ($footerMenu as $fm): ?>
+          <a href="<?= View::e($fm['href']) ?>"><?= View::e($fm['label']) ?></a>
+        <?php endforeach; ?>
+      </nav>
+    <?php endif; ?>
+    <p>Powered by PenBlog · <?= View::e($siteTitle ?? '') ?><?= ($footerText ?? '') !== '' ? ' · ' . View::e((string) $footerText) : '' ?></p>
+  </div>
 </footer>
 <?php endif; ?>
 <script src="/assets/paper.js?v=20261031a" defer></script>
