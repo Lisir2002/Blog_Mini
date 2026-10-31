@@ -18,7 +18,7 @@
 | JWT(短期) | 第三方应用 OAuth 流程(M5) | 15 分钟时效 |
 
 RBAC 资源串:`{kind}:{action}`,如 `post:manage`、`comment:moderate`、`notification:read:self`。
-角色模板:admin / editor / author / subscriber;插件注册路由时声明所需权限串,自动并入角色编辑器(见 04 §5)。
+角色采用四级等级模型(L0 管理员 / L1 编辑 / L2 作者 / L3 订阅者,头衔与权限集可自定义,详见 [09 用户系统设计](09-用户系统.md));插件注册路由时声明所需权限串,自动并入等级编辑器(见 04 §5)。
 
 ## 3. 自动 CRUD(来自 Extension 注册)
 
