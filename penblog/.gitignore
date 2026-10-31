@@ -1,0 +1,6 @@
+/vendor/
+/storage/data.db
+/storage/data.db-*
+/storage/logs/
+/config/config.php
+.phpunit.result.cache
