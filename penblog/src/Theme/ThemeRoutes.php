@@ -702,6 +702,7 @@ final class ThemeRoutes
             'siteMenu' => $siteMenu,
             'tokensCss' => $manager->tokensCss($active),
             'footerText' => (string) $manager->activeOption('footer_text', ''),
+            'updateInfo' => $shell === 'admin' ? $kernel->updateAvailable() : null,
         ]);
         return $kernel->html($html, $status);
     }

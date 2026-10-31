@@ -71,7 +71,9 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
         <button class="btn btn-secondary" type="submit">退出</button>
       </form>
     </header>
-    <div class="admin-content" id="main"><?= $content ?></div>
+    <div class="admin-content" id="main"><?php if (!empty($updateInfo)): ?>
+      <p class="badge badge-pending" role="status">检测到新版本 <?= View::e((string) $updateInfo['from']) ?> → <?= View::e((string) $updateInfo['to']) ?>:请在服务器运行 <code>php bin/migrate.php</code> 完成升级(自动备份,失败回滚)。</p>
+    <?php endif; ?><?= $content ?></div>
   </div>
 </div>
 <?php else: ?>

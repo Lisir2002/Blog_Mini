@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.5.0-m7';
+    public const VERSION = '0.6.0-m8';
 
     public readonly Container $container;
     public readonly Router $router;
@@ -31,6 +31,8 @@ final class Kernel
     private array $globalMiddleware = [];
 
     private bool $installing = false;
+
+    private ?string $configPath = null;
 
     private bool $pluginsBooted = false;
 
@@ -162,13 +164,31 @@ final class Kernel
     {
         $configPath ??= dirname(__DIR__, 2) . '/config/config.php';
         try {
-            return new self(Config::fromFile($configPath, getenv() ?: []));
+            $kernel = new self(Config::fromFile($configPath, getenv() ?: []));
+            $kernel->configPath = $configPath;
+            return $kernel;
         } catch (NotInstalledException) {
             // 未安装:进入安装守卫模式(10 §6),不触达数据库
             $kernel = new self(new Config(['app' => ['debug' => false]], getenv() ?: []));
             $kernel->installing = true;
             return $kernel;
         }
+    }
+
+    /** 引导所用 config 文件路径(fromConfig 组装时为 null)。 */
+    public function configPath(): ?string
+    {
+        return $this->configPath;
+    }
+
+    /** 升级提示(10 §5):config 记录的版本与代码版本不一致。 */
+    public function updateAvailable(): ?array
+    {
+        $recorded = (string) $this->config->get('penblog_version', '');
+        if ($recorded !== '' && $recorded !== self::VERSION) {
+            return ['from' => $recorded, 'to' => self::VERSION];
+        }
+        return null;
     }
 
     public function isInstalling(): bool

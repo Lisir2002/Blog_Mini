@@ -8,17 +8,48 @@ declare(strict_types=1);
  *   php bin/install.php --db=sqlite [--path=storage/data.db]
  *   php bin/install.php --db=mysql --host=127.0.0.1 --dbname=penblog --user=root --pass=secret
  *   通用:--admin-user= --admin-pass= --admin-email= --site-title= --url= [--force]
+ *   修复模式(10 §5,不改用户数据):php bin/install.php --repair [config路径]
  */
 
+use PenBlog\Install\EnvironmentChecker;
 use PenBlog\Install\InstallPlan;
 use PenBlog\Install\InstallService;
+use PenBlog\Kernel\Kernel;
+use PenBlog\Repository\Migrator;
 
 require __DIR__ . '/../vendor/autoload.php';
 
 $options = getopt('', [
     'db::', 'path::', 'host::', 'port::', 'dbname::', 'user::', 'pass::',
-    'admin-user::', 'admin-pass::', 'admin-email::', 'site-title::', 'url::', 'force',
+    'admin-user::', 'admin-pass::', 'admin-email::', 'site-title::', 'url::', 'force', 'repair',
 ]);
+
+// ---- 修复模式:重跑环境自检 + 补跑缺失迁移,不写用户数据/配置 ----
+if (array_key_exists('repair', $options)) {
+    $configPath = null;
+    foreach (array_slice($argv, 1) as $arg) {
+        if (!str_starts_with($arg, '--')) {
+            $configPath = $arg;
+        }
+    }
+    $kernel = Kernel::boot($configPath);
+    if ($kernel->isInstalling()) {
+        fwrite(STDERR, "站点未安装,无法修复\n");
+        exit(1);
+    }
+    $failures = (new EnvironmentChecker())->requiredFailures(
+        (array) $kernel->config->get('db', []),
+        dirname(__DIR__),
+    );
+    if ($failures !== []) {
+        fwrite(STDERR, '环境自检未通过: ' . implode(', ', $failures) . "\n");
+        exit(1);
+    }
+    $ran = $kernel->container->get(Migrator::class)->run();
+    echo '环境自检通过。' . PHP_EOL;
+    echo '补跑迁移: ' . ($ran === [] ? '无(账本完整)' : implode(', ', $ran)) . PHP_EOL;
+    exit(0);
+}
 
 $db = $options['db'] ?? 'sqlite';
 $rootDir = dirname(__DIR__);

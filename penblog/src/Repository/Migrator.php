@@ -34,12 +34,19 @@ final class Migrator
         return array_map(static fn (array $r): string => (string) $r['version'], $rows);
     }
 
-    /** @return list<string> 本次新应用的版本 */
-    public function run(): array
+    /** @return list<string> 已注册但未应用的迁移版本(10 §5 升级计划) */
+    public function pending(): array
     {
         $done = $this->applied();
         $pending = array_diff(array_keys($this->migrations), $done);
         sort($pending);
+        return array_values($pending);
+    }
+
+    /** @return list<string> 本次新应用的版本 */
+    public function run(): array
+    {
+        $pending = $this->pending();
 
         $ran = [];
         $schema = new Schema($this->driver);
