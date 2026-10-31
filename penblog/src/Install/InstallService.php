@@ -45,7 +45,7 @@ final class InstallService
 
         $secretKey = bin2hex(random_bytes(32));
         $kernel = Kernel::fromConfig([
-            'app' => ['debug' => false, 'url' => $plan->siteUrl, 'secret_key' => $secretKey],
+            'app' => ['debug' => $plan->devMode, 'url' => $plan->siteUrl, 'secret_key' => $secretKey],
             'db' => $plan->dbConfig,
             'paths' => [
                 'logs' => $plan->rootDir . '/storage/logs/app.log',
@@ -96,7 +96,7 @@ final class InstallService
         // ---- 原子写 config(10 §5:tmp + rename,0640)----
         $configFile = [
             'penblog_version' => Kernel::VERSION,
-            'app' => ['debug' => false, 'url' => $plan->siteUrl, 'secret_key' => $secretKey],
+            'app' => ['debug' => $plan->devMode, 'url' => $plan->siteUrl, 'secret_key' => $secretKey],
             'db' => $plan->dbConfig,
             'paths' => [
                 'logs' => $plan->rootDir . '/storage/logs/app.log',

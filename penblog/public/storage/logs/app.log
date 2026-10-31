@@ -1,0 +1,4 @@
+[2026-10-31 05:39:43] ERROR: SQLSTATE[HY000]: General error: 1 no such table: options {"exception":"PDOException"}
+[2026-10-31 05:39:51] ERROR: SQLSTATE[HY000]: General error: 1 no such table: options {"exception":"PDOException"}
+[2026-10-31 05:40:15] ERROR: SQLSTATE[HY000]: General error: 1 no such table: options {"exception":"PDOException"}
+[2026-10-31 05:40:19] ERROR: SQLSTATE[HY000]: General error: 1 no such table: options {"exception":"PDOException"}

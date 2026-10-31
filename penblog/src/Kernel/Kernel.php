@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  */
 final class Kernel
 {
-    public const VERSION = '0.2.0-m2';
+    public const VERSION = '0.3.0-m3';
 
     public readonly Container $container;
     public readonly Router $router;
@@ -31,6 +31,8 @@ final class Kernel
     private array $globalMiddleware = [];
 
     private bool $installing = false;
+
+    private ?\PenBlog\Install\InstallWizard $wizard = null;
 
     private function __construct(Config $config)
     {
@@ -216,35 +218,15 @@ final class Kernel
         return new Response($status, ['Content-Type' => 'text/html; charset=utf-8'] + $headers, $body);
     }
 
-    /** 安装守卫(10 §6):/install 自检占位页,API 503,其余 302。 */
+    /** 安装守卫(10 §6):API 503;/install 与静态资源交给 Web 向导,其余 302。 */
     private function installingResponse(ServerRequestInterface $request): ResponseInterface
     {
         $path = $request->getUri()->getPath();
         if (str_starts_with($path, '/api/')) {
             return $this->json(503, ['error' => ['code' => 'not_installed', 'message' => 'PenBlog 尚未安装']]);
         }
-        if ($path === '/install' && $request->getMethod() === 'GET') {
-            $rows = (new \PenBlog\Install\EnvironmentChecker())->check(['driver' => 'sqlite'], dirname(__DIR__, 2));
-            $items = '';
-            foreach ($rows as $row) {
-                $mark = $row['ok'] ? '✓' : ($row['required'] ? '✗' : '!');
-                $color = $row['ok'] ? '#15803D' : ($row['required'] ? '#B91C1C' : '#B45309');
-                $items .= sprintf(
-                    '<li style="color:%s">%s %s —— %s%s</li>',
-                    $color, $mark, htmlspecialchars($row['item'], ENT_QUOTES),
-                    htmlspecialchars($row['hint'], ENT_QUOTES),
-                    $row['required'] ? '' : '(建议)',
-                );
-            }
-            $html = '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
-                . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-                . '<title>安装 PenBlog</title></head><body style="font-family:system-ui;max-width:640px;margin:40px auto;padding:0 16px">'
-                . '<h1>PenBlog 尚未安装</h1><p>环境自检:</p><ul style="line-height:1.9">' . $items . '</ul>'
-                . '<p>Web 安装向导将在 M3 提供;当前可执行 <code>php bin/install.php</code> 完成安装。</p>'
-                . '</body></html>';
-            return $this->html($html);
-        }
-        return new Response(302, ['Location' => '/install']);
+        $this->wizard ??= \PenBlog\Install\InstallWizard::forProject();
+        return $this->wizard->handle($request);
     }
 
     /** @param array<string, mixed> $data */

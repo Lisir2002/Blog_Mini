@@ -18,6 +18,7 @@ final class InstallPlan
         public readonly string $adminEmail = 'admin@example.com',
         public readonly ?string $adminPass = null,
         public readonly bool $force = false,
+        public readonly bool $devMode = false,
         public readonly string $rootDir = '',
         public readonly string $configPath = '',
     ) {

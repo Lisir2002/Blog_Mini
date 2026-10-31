@@ -8,24 +8,30 @@ use PenBlog\Theme\View;
   <p><?= View::e($siteTagline) ?></p>
 </section>
 <?php if ($posts === []): ?>
-  <p class="meta">还没有已发布的文章。</p>
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
+    <p>还没有已发布的文章。</p>
+    <?php if (!empty($authed)): ?><a class="btn" href="/admin/dashboard">去后台发布</a><?php endif; ?>
+  </div>
 <?php else: ?>
 <div class="grid">
   <?php foreach ($posts as $post): ?>
-  <article class="card">
-    <h3><a href="/posts/<?= rawurlencode($post->slug()) ?>"><?= View::e($post->title()) ?></a></h3>
-    <?php if ($post->excerpt() !== null): ?>
-      <p class="excerpt"><?= View::e($post->excerpt()) ?></p>
-    <?php endif; ?>
-    <div class="meta">
-      <span><?= View::e($authors[$post->author()] ?? $post->author()) ?></span>
-      <span>·</span>
-      <time datetime="<?= View::e($post->publishedAt() ?? '') ?>"><?= View::e(substr($post->publishedAt() ?? $post->metadata->creationTimestamp ?? '', 0, 10)) ?></time>
-      <?php foreach ($post->categories() as $cat): ?>
-        <span>· <?= View::e($cat) ?></span>
-      <?php endforeach; ?>
-    </div>
-  </article>
+  <div class="card-slot">
+    <article class="card">
+      <h3><a href="/posts/<?= rawurlencode($post->slug()) ?>"><?= View::e($post->title()) ?></a></h3>
+      <?php if ($post->excerpt() !== null): ?>
+        <p class="excerpt"><?= View::e($post->excerpt()) ?></p>
+      <?php endif; ?>
+      <div class="meta">
+        <span><?= View::e($authors[$post->author()] ?? $post->author()) ?></span>
+        <span>·</span>
+        <time datetime="<?= View::e($post->publishedAt() ?? '') ?>"><?= View::e(substr($post->publishedAt() ?? $post->metadata->creationTimestamp ?? '', 0, 10)) ?></time>
+        <?php foreach ($post->categories() as $cat): ?>
+          <span>· <?= View::e($cat) ?></span>
+        <?php endforeach; ?>
+      </div>
+    </article>
+  </div>
   <?php endforeach; ?>
 </div>
 <?php endif; ?>

@@ -68,7 +68,12 @@ final class InstallServiceTest extends TestCase
 
     public function testRefusesOverwriteWithoutForce(): void
     {
-        $plan = InstallPlan::defaults(['driver' => 'sqlite', 'path' => $this->root . '/storage/data.db']);
+        // 必须用临时 configPath:defaults() 指向真实项目根,会污染开发环境
+        $plan = new InstallPlan(
+            dbConfig: ['driver' => 'sqlite', 'path' => $this->root . '/storage/data.db'],
+            rootDir: $this->root,
+            configPath: $this->root . '/config/config.php',
+        );
         file_put_contents($plan->configPath, "<?php\n\nreturn [];");
         $this->expectException(\RuntimeException::class);
         (new InstallService())->run($plan);
