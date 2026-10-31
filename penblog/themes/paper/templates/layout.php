@@ -23,13 +23,42 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
   <aside class="admin-sidebar" aria-label="后台导航">
     <a href="/admin/dashboard" <?= ($page ?? '') === 'dashboard' ? 'aria-current="page"' : '' ?>>内容</a>
     <a href="/admin/posts/new">写文章</a>
-    <a href="#" aria-disabled="true">设置(M3)</a>
+    <a href="/admin/notifications" <?= ($page ?? '') === 'notifications' ? 'aria-current="page"' : '' ?>>通知</a>
+    <a href="/admin/notifications/preferences">通知偏好</a>
     <a href="/" target="_blank" rel="noopener">查看站点</a>
   </aside>
   <div class="admin-main">
     <header class="admin-topbar">
       <strong>PenBlog 后台</strong>
       <?= $themeToggle() ?>
+      <div class="menu bell-menu" data-menu>
+        <button class="menu-btn bell-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="通知<?= !empty($bellUnread) ? '(' . (int) $bellUnread . ' 条未读)' : '' ?>">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <?php if (!empty($bellUnread)): ?><span class="bell-badge"><?= (int) min(99, (int) $bellUnread) ?></span><?php endif; ?>
+        </button>
+        <div class="menu-panel bell-panel" role="menu" aria-label="最近通知">
+          <?php if (empty($bellItems)): ?>
+            <p class="bell-empty">暂无通知</p>
+          <?php else: foreach ($bellItems as $b): ?>
+            <a role="menuitem" class="bell-item<?= $b['read_at'] === null ? ' unread' : '' ?>"
+               href="<?= View::e(($b['link'] ?? '') !== '' ? (string) $b['link'] : '/admin/notifications') ?>"
+               data-notif-read="<?= (int) $b['id'] ?>">
+              <span class="notif-dot" aria-hidden="true"></span>
+              <span class="bell-item-title"><?= View::e($b['title'] !== '' ? (string) $b['title'] : '(通知)') ?></span>
+              <time><?= View::e(\PenBlog\Theme\View::ago((string) $b['created_at'])) ?></time>
+            </a>
+          <?php endforeach; endif; ?>
+          <div class="bell-foot">
+            <a href="/admin/notifications">查看全部</a>
+            <?php if (!empty($bellUnread)): ?>
+            <form method="post" action="/admin/notifications/read-all">
+              <input type="hidden" name="_csrf" value="<?= View::e($csrf ?? '') ?>">
+              <button type="submit">全部已读</button>
+            </form>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
       <span class="meta" style="margin-inline-start:auto"><?= View::e($adminUser ?? '') ?> · <?= View::e($adminLevelTitle ?? '') ?></span>
       <form method="post" action="/admin/logout" style="display:inline">
         <input type="hidden" name="_csrf" value="<?= View::e($csrf ?? '') ?>">
@@ -57,6 +86,6 @@ $themeToggle = static fn (): string => '<button class="theme-toggle" type="butto
   <div class="container">Powered by PenBlog · <?= View::e($siteTitle ?? '') ?></div>
 </footer>
 <?php endif; ?>
-<script src="/assets/paper.js" defer></script>
+<script src="/assets/paper.js?v=20261031a" defer></script>
 </body>
 </html>

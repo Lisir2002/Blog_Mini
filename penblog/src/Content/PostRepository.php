@@ -25,6 +25,7 @@ final class PostRepository
     public function __construct(
         private readonly SqlDriver $driver,
         private readonly ExtensionRegistry $registry,
+        private readonly \PenBlog\Kernel\EventBus $events,
     ) {
     }
 
@@ -34,12 +35,14 @@ final class PostRepository
     public function save(?string $slug, array $input, Gate $gate): Post
     {
         $existing = null;
+        $wasPublished = false;
         if ($slug !== null) {
             $found = $this->registry->find(Post::KIND, $slug);
             if (!$found instanceof Post) {
                 throw ApiException::notFound('Post');
             }
             $existing = $found;
+            $wasPublished = $found->status() === 'published';
         }
 
         $title = trim((string) ($input['title'] ?? $existing?->title() ?? ''));
@@ -161,6 +164,11 @@ final class PostRepository
                 $pdo->rollBack();
             }
             throw $e;
+        }
+
+        // 首次进入 published → 领域事件(05 §3;监听方吞异常,不影响发布)
+        if ($status === 'published' && !$wasPublished) {
+            $this->events->dispatch(new \PenBlog\Notification\Events\PostPublished($finalSlug, $title, $author));
         }
 
         return $post;

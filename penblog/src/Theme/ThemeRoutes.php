@@ -135,16 +135,28 @@ final class ThemeRoutes
                 return new Response(302, ['Location' => $back . '?error=invalid']);
             }
             $driver = $c->get(SqlDriver::class);
-            $driver->insertReturningId('comments', [
+            $status = $gate->allows('comment:moderate') ? 'approved' : 'pending';
+            $commentId = $driver->insertReturningId('comments', [
                 'post_id' => self::postId($driver->pdo(), $post->slug()),
                 'user_id' => $gate->user->id(),
                 'author_name' => null,
                 'author_email' => null,
                 'parent_id' => null,
                 'body' => $text,
-                'status' => $gate->allows('comment:moderate') ? 'approved' : 'pending',
+                'status' => $status,
                 'created_at' => gmdate('Y-m-d\TH:i:s\Z'),
             ]);
+            $c->get(\PenBlog\Kernel\EventBus::class)->dispatch(new \PenBlog\Notification\Events\CommentCreated(
+                commentId: $commentId,
+                postSlug: $post->slug(),
+                postTitle: $post->title(),
+                postAuthorUsername: $post->author(),
+                authorName: $gate->user->displayName(),
+                userId: $gate->user->id(),
+                status: $status,
+                parentId: null,
+                excerpt: mb_substr($text, 0, 80),
+            ));
             return new Response(302, ['Location' => $back . '#comments']);
         });
 
@@ -411,6 +423,142 @@ final class ThemeRoutes
             }
             return new Response(200, ['Content-Type' => 'text/html; charset=utf-8'], Markdown::toHtml($md));
         });
+
+        // ---- 通知中心(05 §7 / 08 §4.4)----
+        $notifs = static fn (): \PenBlog\Notification\NotificationRepository => $c->get(\PenBlog\Notification\NotificationRepository::class);
+        $requireAdmin = static function (ServerRequestInterface $req): ?ResponseInterface {
+            $gate = AuthMiddleware::gate($req);
+            return $gate->isAuthenticated() ? null : new Response(302, ['Location' => '/admin/login']);
+        };
+
+        $router->get('/admin/notifications', static function (ServerRequestInterface $req) use ($kernel, $notifs, $requireAdmin): ResponseInterface {
+            if (($r = $requireAdmin($req)) !== null) {
+                return $r;
+            }
+            $gate = AuthMiddleware::gate($req);
+            $query = $req->getQueryParams();
+            $category = (string) ($query['category'] ?? '');
+            if ($category !== '' && !\PenBlog\Notification\NotificationPolicy::isKnown($category)) {
+                $category = '';
+            }
+            $page = max(1, (int) ($query['page'] ?? 1));
+            $size = 30;
+            $result = $notifs()->list($gate->user->id(), ['category' => $category], $page, $size);
+            return self::page($kernel, $req, 'admin_notifications', [
+                'items' => $result['items'],
+                'total' => $result['total'],
+                'page' => $page,
+                'size' => $size,
+                'category' => $category,
+                'unread' => $notifs()->unreadCount($gate->user->id()),
+                'categories' => \PenBlog\Notification\NotificationPolicy::all(),
+                'saved' => isset($query['saved']),
+            ], 'notifications', '通知中心 · 后台', 'admin');
+        });
+
+        $router->get('/admin/notifications/preferences', static function (ServerRequestInterface $req) use ($kernel, $c, $requireAdmin): ResponseInterface {
+            if (($r = $requireAdmin($req)) !== null) {
+                return $r;
+            }
+            $gate = AuthMiddleware::gate($req);
+            $prefsRepo = $c->get(\PenBlog\Notification\PreferenceRepository::class);
+            $cards = [];
+            foreach (\PenBlog\Notification\NotificationPolicy::all() as $category => $meta) {
+                $resolved = $prefsRepo->resolve($gate->user->id(), $category);
+                $row = $prefsRepo->allFor($gate->user->id())[$category] ?? null;
+                $cards[] = [
+                    'category' => $category,
+                    'label' => $meta['label'],
+                    'defaultChannels' => $meta['channels'],
+                    'useDefault' => $row === null || (int) $row['use_default'] === 1,
+                    'channels' => array_map('strval', (array) json_decode((string) ($row['channels_json'] ?? '[]'), true)),
+                    'quietStart' => (string) ($row['quiet_start'] ?? ''),
+                    'quietEnd' => (string) ($row['quiet_end'] ?? ''),
+                    'quietTz' => (string) ($row['quiet_tz'] ?? ''),
+                ];
+            }
+            return self::page($kernel, $req, 'admin_preferences', [
+                'cards' => $cards,
+                'channels' => \PenBlog\Notification\PreferenceRepository::CHANNELS,
+                'webhookUrl' => (string) $c->get(\PenBlog\Kernel\OptionsStore::class)->get('notify.webhook.url.' . $gate->user->id(), ''),
+                'saved' => isset($req->getQueryParams()['saved']),
+            ], 'notifications', '通知偏好 · 后台', 'admin');
+        });
+
+        $router->post('/admin/notifications/read-all', static function (ServerRequestInterface $req) use ($notifs, $requireAdmin): ResponseInterface {
+            if (($r = $requireAdmin($req)) !== null) {
+                return $r;
+            }
+            $notifs()->markAllRead(AuthMiddleware::gate($req)->user->id());
+            return new Response(302, ['Location' => '/admin/notifications']);
+        });
+
+        $router->post('/admin/notifications/test', static function (ServerRequestInterface $req) use ($c, $requireAdmin): ResponseInterface {
+            if (($r = $requireAdmin($req)) !== null) {
+                return $r;
+            }
+            $gate = AuthMiddleware::gate($req);
+            $c->get(\PenBlog\Notification\NotificationPipeline::class)->process(new \PenBlog\Notification\NotifyRequest(
+                eventId: \PenBlog\Notification\NotifyRequest::uuid(),
+                category: 'system',
+                recipient: $gate->user->id(),
+                templateKey: 'system.test',
+                payload: [],
+                link: '/admin/notifications',
+            ));
+            return new Response(302, ['Location' => '/admin/notifications?saved=test']);
+        });
+
+        foreach (['read', 'archive'] as $verb) {
+            $router->post("/admin/notifications/{id}/{$verb}", static function (ServerRequestInterface $req) use ($notifs, $requireAdmin, $verb): ResponseInterface {
+                if (($r = $requireAdmin($req)) !== null) {
+                    return $r;
+                }
+                $id = (int) (Body::routeParams($req)['id'] ?? 0);
+                $uid = AuthMiddleware::gate($req)->user->id();
+                $verb === 'read' ? $notifs()->markRead($id, $uid) : $notifs()->archive($id, $uid);
+                return new Response(302, ['Location' => '/admin/notifications']);
+            });
+        }
+
+        $router->post('/admin/notifications/preferences', static function (ServerRequestInterface $req) use ($c, $requireAdmin): ResponseInterface {
+            if (($r = $requireAdmin($req)) !== null) {
+                return $r;
+            }
+            $gate = AuthMiddleware::gate($req);
+            $body = Body::of($req);
+            $category = (string) ($body['category'] ?? '');
+            if (!\PenBlog\Notification\NotificationPolicy::isKnown($category)) {
+                return new Response(302, ['Location' => '/admin/notifications/preferences']);
+            }
+            $c->get(\PenBlog\Notification\PreferenceRepository::class)->save($gate->user->id(), $category, [
+                'use_default' => !empty($body['use_default']),
+                'channels' => (array) ($body['channels'] ?? []),
+                'quiet_start' => $body['quiet_start'] ?? null,
+                'quiet_end' => $body['quiet_end'] ?? null,
+                'quiet_tz' => $body['quiet_tz'] ?? null,
+            ]);
+            return new Response(302, ['Location' => '/admin/notifications/preferences?saved=1']);
+        });
+
+        $router->post('/admin/notifications/webhook', static function (ServerRequestInterface $req) use ($c, $requireAdmin): ResponseInterface {
+            if (($r = $requireAdmin($req)) !== null) {
+                return $r;
+            }
+            $gate = AuthMiddleware::gate($req);
+            $options = $c->get(\PenBlog\Kernel\OptionsStore::class);
+            $url = trim((string) (Body::of($req)['webhook_url'] ?? ''));
+            $secret = trim((string) (Body::of($req)['webhook_secret'] ?? ''));
+            if ($url === '') {
+                $options->delete('notify.webhook.url.' . $gate->user->id());
+            } elseif (preg_match('#^https?://#i', $url)) {
+                $options->set('notify.webhook.url.' . $gate->user->id(), $url);
+            }
+            if ($secret !== '') {
+                $options->set('notify.webhook.secret.' . $gate->user->id(), $secret);
+            }
+            return new Response(302, ['Location' => '/admin/notifications/preferences?saved=1']);
+        });
     }
 
     /** @return array<string, string> */
@@ -509,6 +657,17 @@ final class ThemeRoutes
             'siteTitle' => $siteTitle,
             'csrf' => self::csrf($req),
         ]);
+        $bellItems = [];
+        $bellUnread = 0;
+        if ($shell === 'admin' && $gate->isAuthenticated()) {
+            try {
+                $notifs = $kernel->container->get(\PenBlog\Notification\NotificationRepository::class);
+                $bellItems = $notifs->list($gate->user->id(), [], 1, 8)['items'];
+                $bellUnread = $notifs->unreadCount($gate->user->id());
+            } catch (\Throwable) {
+                // 通知子系统不可用不影响页面渲染
+            }
+        }
         $html = View::render("{$dir}/templates/layout.php", [
             'content' => $content,
             'title' => $title !== null ? "{$title} · {$siteTitle}" : $siteTitle,
@@ -519,6 +678,8 @@ final class ThemeRoutes
             'adminUser' => $gate->user?->displayName() ?? '',
             'adminLevelTitle' => $gate->title,
             'csrf' => self::csrf($req),
+            'bellItems' => $bellItems,
+            'bellUnread' => $bellUnread,
         ]);
         return $kernel->html($html, $status);
     }

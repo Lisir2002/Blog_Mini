@@ -125,17 +125,30 @@ final class ContentRoutes
                 throw ValidationException::required('body');
             }
             $pdo = $c->get(\PenBlog\Repository\SqlDriver::class)->pdo();
+            $parentId = isset(Body::of($req)['parentId']) ? (int) Body::of($req)['parentId'] : null;
+            $status = $gate->allows('comment:moderate') ? 'approved' : 'pending';
             $id = $c->get(\PenBlog\Repository\SqlDriver::class)->insertReturningId('comments', [
                 'post_id' => self::postId($pdo, $post->slug()),
                 'user_id' => $gate->user->id(),
                 'author_name' => null,
                 'author_email' => null,
-                'parent_id' => isset(Body::of($req)['parentId']) ? (int) Body::of($req)['parentId'] : null,
+                'parent_id' => $parentId,
                 'body' => $body,
-                'status' => $gate->allows('comment:moderate') ? 'approved' : 'pending',
+                'status' => $status,
                 'created_at' => gmdate('Y-m-d\TH:i:s\Z'),
             ]);
-            return Json::ok(201, ['comment' => ['id' => $id, 'status' => $gate->allows('comment:moderate') ? 'approved' : 'pending']]);
+            $c->get(\PenBlog\Kernel\EventBus::class)->dispatch(new \PenBlog\Notification\Events\CommentCreated(
+                commentId: $id,
+                postSlug: $post->slug(),
+                postTitle: $post->title(),
+                postAuthorUsername: $post->author(),
+                authorName: $gate->user->displayName(),
+                userId: $gate->user->id(),
+                status: $status,
+                parentId: $parentId,
+                excerpt: mb_substr($body, 0, 80),
+            ));
+            return Json::ok(201, ['comment' => ['id' => $id, 'status' => $status]]);
         });
 
         // ---- categories / tags ----

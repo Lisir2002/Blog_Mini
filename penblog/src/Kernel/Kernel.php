@@ -63,6 +63,7 @@ final class Kernel
             $m->register('0001-initial-schema', new \PenBlog\Database\Migrations\InitialSchema());
             $m->register('0002-auth-schema', new \PenBlog\Database\Migrations\AuthSchema());
             $m->register('0003-content-schema', new \PenBlog\Database\Migrations\ContentSchema());
+            $m->register('0004-notification-schema', new \PenBlog\Database\Migrations\NotificationSchema());
             return $m;
         });
 
@@ -88,6 +89,24 @@ final class Kernel
         $container->singleton(\PenBlog\Content\PostRepository::class, static fn (Container $c): \PenBlog\Content\PostRepository => new \PenBlog\Content\PostRepository(
             $c->get(SqlDriver::class),
             $c->get(ExtensionRegistry::class),
+            $c->get(EventBus::class),
+        ));
+
+        // ---- 通知子系统(05 五层管线)----
+        $container->singleton(\PenBlog\Notification\PreferenceRepository::class, static fn (Container $c): \PenBlog\Notification\PreferenceRepository => new \PenBlog\Notification\PreferenceRepository($c->get(SqlDriver::class)));
+        $container->singleton(\PenBlog\Notification\NotificationRepository::class, static fn (Container $c): \PenBlog\Notification\NotificationRepository => new \PenBlog\Notification\NotificationRepository($c->get(SqlDriver::class)));
+        $container->singleton(\PenBlog\Notification\NotificationTemplates::class, static fn (): \PenBlog\Notification\NotificationTemplates => new \PenBlog\Notification\NotificationTemplates());
+        $container->singleton(\PenBlog\Notification\Mailer::class, static fn (Container $c): \PenBlog\Notification\Mailer => \PenBlog\Notification\Mailer::fromConfig($c->get(Config::class)));
+        $container->singleton(\PenBlog\Notification\NotificationPipeline::class, static fn (Container $c): \PenBlog\Notification\NotificationPipeline => new \PenBlog\Notification\NotificationPipeline(
+            $c->get(SqlDriver::class),
+            $c->get(\PenBlog\Auth\UserRepository::class),
+            $c->get(\PenBlog\Notification\PreferenceRepository::class),
+            $c->get(\PenBlog\Notification\NotificationRepository::class),
+            $c->get(\PenBlog\Notification\NotificationTemplates::class),
+            [
+                'email' => new \PenBlog\Notification\Channels\EmailChannel($c->get(\PenBlog\Notification\Mailer::class)),
+                'webhook' => new \PenBlog\Notification\Channels\WebhookChannel($c->get(OptionsStore::class)),
+            ],
         ));
 
         $this->addMiddleware(new \PenBlog\Http\BodyParserMiddleware());
@@ -96,8 +115,10 @@ final class Kernel
 
         \PenBlog\Api\AuthRoutes::register($this);
         \PenBlog\Api\ContentRoutes::register($this);
+        \PenBlog\Api\NotificationRoutes::register($this);
         $this->registerCoreRoutes();
         \PenBlog\Theme\ThemeRoutes::register($this);
+        \PenBlog\Notification\NotificationService::register($this);
     }
 
     /** @param array<string, mixed> $config */

@@ -32,4 +32,30 @@ final class View
     {
         return self::esc($value);
     }
+
+    /** 相对时间(通知列表/铃铛):<1m/刚刚、分钟、小时、天、日期。 */
+    public static function ago(?string $iso): string
+    {
+        if ($iso === null || $iso === '') {
+            return '';
+        }
+        $ts = strtotime($iso);
+        if ($ts === false) {
+            return substr($iso, 0, 10);
+        }
+        $diff = time() - $ts;
+        if ($diff < 60) {
+            return '刚刚';
+        }
+        if ($diff < 3600) {
+            return intdiv($diff, 60) . ' 分钟前';
+        }
+        if ($diff < 86400) {
+            return intdiv($diff, 3600) . ' 小时前';
+        }
+        if ($diff < 7 * 86400) {
+            return intdiv($diff, 86400) . ' 天前';
+        }
+        return date('Y-m-d', $ts);
+    }
 }

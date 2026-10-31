@@ -443,6 +443,47 @@ details.field > .grid-2, details.field > .field { margin-block-start: var(--spac
 #draft-status { min-height: 1.4em; margin-block: var(--space-xs) 0; }
 .draft-banner { margin-block-start: var(--space-md); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 
+/* ---------- 通知中心(05 §7 / 08 §4.4) ---------- */
+.chip-active { outline: 1px solid var(--color-accent); color: var(--color-accent); }
+.notif-list { list-style: none; margin: var(--space-md) 0 0; padding: 0; display: grid; gap: var(--space-2xs); }
+.notif-row {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: var(--space-sm); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+}
+.notif-row > * { min-width: 0; }
+.notif-dot { width: 8px; height: 8px; border-radius: var(--radius-full); flex: 0 0 auto; background: transparent; }
+.notif-row.unread .notif-dot { background: var(--color-accent); }
+.notif-body { flex: 1 1 auto; display: grid; gap: var(--space-2xs); }
+.notif-title { font-weight: 500; color: var(--color-text); overflow-wrap: anywhere; }
+.notif-row.unread .notif-title { font-weight: 600; }
+.notif-meta { display: flex; align-items: center; gap: var(--space-xs); color: var(--color-text-muted); font-size: .8125rem; flex-wrap: wrap; }
+.notif-actions { flex: 0 0 auto; }
+.field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 0 var(--space-md); }
+.field-row > * { min-width: 0; }
+.card .card-title { -webkit-line-clamp: unset; overflow: visible; white-space: normal; font-size: 1rem; }
+.chip input[type="checkbox"] { accent-color: var(--color-accent); }
+
+.bell-menu { flex: 0 0 auto; }
+.bell-btn { position: relative; min-width: 44px; min-height: 44px; justify-content: center; }
+.bell-badge {
+  position: absolute; inset-block-start: 2px; inset-inline-end: 0;
+  min-width: 16px; height: 16px; padding-inline: 3px; border-radius: var(--radius-full);
+  background: var(--color-danger); color: #fff; font-size: .6875rem; line-height: 16px; text-align: center;
+}
+.bell-panel { max-height: min(60vh, 420px); overflow-y: auto; }
+.bell-item { position: relative; height: auto; min-height: 36px; align-items: flex-start; flex-direction: column; gap: 2px; padding-block: var(--space-xs); }
+.bell-item > * { min-width: 0; }
+.bell-item .notif-dot { position: absolute; inset-inline-start: 2px; inset-block-start: 14px; }
+.bell-item.unread .bell-item-title { font-weight: 600; }
+.bell-item-title { overflow-wrap: anywhere; }
+.bell-item time { color: var(--color-text-muted); font-size: .75rem; }
+.bell-empty { padding: var(--space-sm); margin: 0; color: var(--color-text-muted); font-size: .875rem; }
+.bell-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); border-top: 1px solid var(--color-border); margin-block-start: var(--space-2xs); padding-block-start: var(--space-2xs); }
+.bell-foot > * { min-width: 0; }
+.bell-foot form { display: inline; }
+.bell-foot button { height: 32px; width: auto; justify-content: center; font-size: .8125rem; }
+
 /* ---------- 动效约束(§2.3)+ reduced-motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }

@@ -53,6 +53,26 @@
     });
   });
 
+  /* ---------- 通知点击标读:异步 POST API,失败不阻断跳转 ---------- */
+  function csrfToken() {
+    var m = document.cookie.match(/(?:^|; )penblog_csrf=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  document.querySelectorAll('a[data-notif-read]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      var id = a.getAttribute('data-notif-read');
+      fetch('/api/v1/notifications/' + id + ':read', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken() },
+        credentials: 'same-origin',
+        keepalive: true, /* 页面跳转卸载后仍完成请求 */
+      }).then(function () {
+        var row = a.closest('.notif-row');
+        if (row) row.classList.remove('unread');
+      }).catch(function () { /* 离线时仍允许跳转 */ });
+    });
+  });
+
   /* ---------- 模态确认:危险操作必须显示对象名;无 JS 时表单直接提交 ---------- */
   var dialog = document.getElementById('confirm-modal');
   if (dialog && typeof dialog.showModal === 'function') {
